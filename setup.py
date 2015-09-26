@@ -25,6 +25,7 @@ setup(
     description='Show new journal entries since last run',
     author='Tim Waugh',
     author_email='tim@cyberelk.net',
+    url='https://github.com/twaugh/journal-brief',
     license="GPLv2+",
     entry_points={
         'console_scripts': ['journal-brief=journal_brief.main:run'],

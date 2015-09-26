@@ -18,3 +18,5 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
 from journal_brief.journal_brief import (LatestJournalEntries,
                                          EntryFormatter)
+
+__version__ = '0.0.1'

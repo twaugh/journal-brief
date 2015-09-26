@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 """
 Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 

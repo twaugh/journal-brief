@@ -47,10 +47,8 @@ def run():
 
     formatter = EntryFormatter()
     with LatestJournalEntries(**kwargs) as entries:
-        output = '\n'.join([formatter.format(entry) for entry in entries])
-
-    if output:
-        print(output)
+        for entry in entries:
+            print(formatter.format(entry))
 
 
 if __name__ == '__main__':

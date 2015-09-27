@@ -16,8 +16,29 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 ## Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 """
 
-from journal_brief.journal_brief import (LatestJournalEntries,
-                                         EntryFormatter)
-from journal_brief.filter import JournalFilter
+from collections.abc import Iterator
+import errno
+import os
+from systemd import journal
 
-__version__ = '0.0.1'
+
+class JournalFilter(Iterator):
+    """
+    Exclude certain journal entries
+    """
+
+    def __init__(self, iterator):
+        """
+        Constructor
+
+        :param iterator: iterator, providing journal entries
+        """
+        super(JournalFilter, self).__init__()
+        self.iterator = iterator
+
+    def __next__(self):
+        for fields in self.iterator:
+            if True:
+                return fields
+
+        raise StopIteration

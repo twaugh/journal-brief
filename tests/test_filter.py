@@ -16,8 +16,20 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 ## Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 """
 
-from journal_brief.journal_brief import (LatestJournalEntries,
-                                         EntryFormatter)
-from journal_brief.filter import JournalFilter
+from flexmock import flexmock
+from journal_brief import JournalFilter
+from systemd import journal
 
-__version__ = '0.0.1'
+
+class TestJournalFilter(object):
+    def test_no_exclusions(self):
+        entries = [{'MESSAGE': 'message 1'},
+                   {'MESSAGE': 'message 2'}]
+        (flexmock(journal.Reader)
+            .should_receive('get_next')
+            .and_return(entries[0])
+            .and_return(entries[1])
+            .and_return({}))
+
+        filter = JournalFilter(journal.Reader())
+        assert list(filter) == entries

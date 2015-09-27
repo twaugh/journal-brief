@@ -21,7 +21,7 @@ from os.path import basename
 import sys
 from systemd import journal
 
-from journal_brief import LatestJournalEntries, EntryFormatter
+from journal_brief import LatestJournalEntries, EntryFormatter, JournalFilter
 
 
 def get_args():
@@ -47,7 +47,7 @@ def run():
 
     formatter = EntryFormatter()
     with LatestJournalEntries(**kwargs) as entries:
-        for entry in entries:
+        for entry in JournalFilter(entries):
             print(formatter.format(entry))
 
 

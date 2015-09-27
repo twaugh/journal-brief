@@ -23,9 +23,20 @@ from systemd import journal
 
 
 class LatestJournalEntries(Iterator):
+    """
+    Iterate over new journal entries since last time
+    """
+
     DEFAULT_CURSOR_FILE = "{0}/.config/journal-brief/cursor"
 
-    def __init__(self, cursor_file=None, log_level=None, **kwargs):
+    def __init__(self, cursor_file=None, log_level=None, reader=None):
+        """
+        Constructor
+
+        :param cursor_file: str, filename of cursor bookmark file
+        :param log_level: int, minimum log level
+        :param reader: systemd.journal.Reader instance
+        """
         super(LatestJournalEntries, self).__init__()
 
         if cursor_file:
@@ -42,7 +53,9 @@ class LatestJournalEntries(Iterator):
             else:
                 raise
 
-        reader = journal.Reader(**kwargs)
+        if reader is None:
+            reader = journal.Reader()
+
         if log_level is not None:
             reader.log_level(log_level)
 
@@ -82,15 +95,31 @@ class LatestJournalEntries(Iterator):
 
 
 class EntryFormatter(object):
+    """
+    Convert a journal entry into a string
+    """
+
     FORMAT = '{__REALTIME_TIMESTAMP} {MESSAGE}'
     TIMESTAMP_FORMAT = '%b %d %T'
 
-    def format_timestamp(self, entry):
-        field = '__REALTIME_TIMESTAMP'
+    def format_timestamp(self, entry, field):
+        """
+        Convert entry field from datetime.datetime instance to string
+
+        Uses strftime() and TIMESTAMP_FORMAT
+        """
+
         if field in entry:
             dt = entry[field]
             entry[field] = dt.strftime(self.TIMESTAMP_FORMAT)
 
     def format(self, entry):
-        self.format_timestamp(entry)
+        """
+        Format a journal entry using FORMAT
+
+        :param entry: dict, journal entry
+        :return: str, formatted string
+        """
+
+        self.format_timestamp(entry, '__REALTIME_TIMESTAMP')
         return self.FORMAT.format(**entry)

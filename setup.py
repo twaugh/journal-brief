@@ -30,6 +30,7 @@ setup(
     entry_points={
         'console_scripts': ['journal-brief=journal_brief.cli.main:run'],
     },
+    requirements=['PyYAML'],
     packages=find_packages(),
     package_data={'': ['conf/journal-brief.conf']},
 )

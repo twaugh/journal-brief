@@ -28,7 +28,7 @@ setup(
     url='https://github.com/twaugh/journal-brief',
     license="GPLv2+",
     entry_points={
-        'console_scripts': ['journal-brief=journal_brief.main:run'],
+        'console_scripts': ['journal-brief=journal_brief.cli.main:run'],
     },
     packages=find_packages(),
     package_data={'': ['conf/journal-brief.conf']},

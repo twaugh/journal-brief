@@ -23,6 +23,7 @@ import sys
 from systemd import journal
 
 from journal_brief import LatestJournalEntries, EntryFormatter, JournalFilter
+from journal_brief.filter import Config
 
 
 def get_args():
@@ -33,6 +34,8 @@ def get_args():
                                  'notice', 'info', 'debug'])
     parser.add_argument('--cursor-file', metavar='FILE',
                         help='use FILE as cursor bookmark file')
+    parser.add_argument('--conf', metavar='FILE',
+                        help='use FILE as config file')
     return parser.parse_args(sys.argv[1:])
 
 
@@ -46,9 +49,10 @@ def run():
     if args.cursor_file:
         kwargs['cursor_file'] = args.cursor_file
 
+    config = Config(config_file=args.conf)
     formatter = EntryFormatter()
     with LatestJournalEntries(**kwargs) as entries:
-        for entry in JournalFilter(entries):
+        for entry in JournalFilter(entries, config=config):
             print(formatter.format(entry))
 
 

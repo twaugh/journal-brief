@@ -17,9 +17,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 """
 
 from collections.abc import Iterator
-import errno
-from journal_brief.constants import CONFIG_DIR, PACKAGE
-import journal_brief
+from journal_brief.config import Config
 from logging import getLogger
 import os
 from systemd import journal
@@ -40,39 +38,6 @@ class Exclusion(dict):
                 return False
 
         return True
-
-
-class Config(dict):
-    def __init__(self, config_file=None):
-        if not config_file:
-            conf_filename = '{0}.conf'.format(PACKAGE)
-            config_file = os.path.join(CONFIG_DIR, conf_filename)
-
-        try:
-            with open(config_file) as config_fp:
-                config = yaml.safe_load(config_fp)
-                if not config:
-                    config = {}
-        except IOError as ex:
-            if ex.errno == errno.ENOENT:
-                config = {}
-            else:
-                raise
-
-        assert isinstance(config, dict)
-        super(Config, self).__init__(config)
-        self.validate()
-
-    def validate(self):
-        if 'exclusions' in self:
-            assert isinstance(self['exclusions'], list)
-            log.debug("Exclusions:")
-            for exclusion in self['exclusions']:
-                assert isinstance(exclusion, dict)
-                log.debug('-')
-                for key, values in exclusion.items():
-                    log.debug("%s: %r", key, values)
-                    assert isinstance(values, list)
 
 
 class JournalFilter(Iterator):

@@ -17,7 +17,8 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 """
 
 from flexmock import flexmock
-from journal_brief.filter import Exclusion, JournalFilter, Config
+from journal_brief import Config, JournalFilter
+from journal_brief.filter import Exclusion
 import logging
 from systemd import journal
 from tempfile import NamedTemporaryFile

@@ -19,5 +19,6 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 from journal_brief.journal_brief import (LatestJournalEntries,
                                          EntryFormatter)
 from journal_brief.filter import JournalFilter
+from journal_brief.config import Config
 
 __version__ = '0.0.1'

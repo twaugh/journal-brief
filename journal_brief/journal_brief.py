@@ -28,8 +28,6 @@ class LatestJournalEntries(Iterator):
     Iterate over new journal entries since last time
     """
 
-    DEFAULT_CURSOR_FILE = os.path.join(CONFIG_DIR, 'cursor')
-
     def __init__(self, cursor_file=None, log_level=None, reader=None):
         """
         Constructor
@@ -40,11 +38,7 @@ class LatestJournalEntries(Iterator):
         """
         super(LatestJournalEntries, self).__init__()
 
-        if cursor_file:
-            self.cursor_file = cursor_file
-        else:
-            home = os.environ['HOME']
-            self.cursor_file = self.DEFAULT_CURSOR_FILE.format(home)
+        self.cursor_file = cursor_file
         try:
             with open(self.cursor_file, "rt") as fp:
                 self.cursor = fp.read()

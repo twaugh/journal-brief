@@ -18,12 +18,13 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
 import argparse
 import logging
-from os.path import basename
+import os
 import sys
 from systemd import journal
 
 from journal_brief import LatestJournalEntries, EntryFormatter, JournalFilter
 from journal_brief.filter import Config
+from journal_brief.constants import CONFIG_DIR
 
 
 def get_args():
@@ -32,8 +33,6 @@ def get_args():
                         help='show entries at priority PRI and lower',
                         choices=['emerg', 'alert', 'crit', 'err', 'warning',
                                  'notice', 'info', 'debug'])
-    parser.add_argument('--cursor-file', metavar='FILE',
-                        help='use FILE as cursor bookmark file')
     parser.add_argument('--conf', metavar='FILE',
                         help='use FILE as config file')
     return parser.parse_args(sys.argv[1:])
@@ -46,10 +45,13 @@ def run():
         attr = 'LOG_' + args.priority.upper()
         kwargs['log_level'] = getattr(journal, attr)
 
-    if args.cursor_file:
-        kwargs['cursor_file'] = args.cursor_file
-
     config = Config(config_file=args.conf)
+    cursor_file = config['cursor-file']
+    if not cursor_file.startswith('/'):
+        cursor_file = os.path.join(CONFIG_DIR, cursor_file)
+
+    kwargs['cursor_file'] = cursor_file
+
     formatter = EntryFormatter()
     with LatestJournalEntries(**kwargs) as entries:
         for entry in JournalFilter(entries, config=config):

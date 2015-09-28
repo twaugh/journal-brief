@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 """
 Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
@@ -17,20 +16,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 ## Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 """
 
-from setuptools import setup, find_packages
+import os
 
-setup(
-    name='journal-brief',
-    version='0.0.1',
-    description='Show new journal entries since last run',
-    author='Tim Waugh',
-    author_email='tim@cyberelk.net',
-    url='https://github.com/twaugh/journal-brief',
-    license="GPLv2+",
-    entry_points={
-        'console_scripts': ['journal-brief=journal_brief.main:run'],
-    },
-    packages=find_packages(),
-    package_data={'': ['conf/journal-brief.conf']},
-)
-
+CONFIG_DIR = '{0}/.config/journal-brief'.format(os.path.expanduser('~'))
+PACKAGE = 'journal-brief'

@@ -17,6 +17,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 """
 
 import argparse
+import logging
 from os.path import basename
 import sys
 from systemd import journal
@@ -32,6 +33,7 @@ def get_args():
                                  'notice', 'info', 'debug'])
     parser.add_argument('--cursor-file', metavar='FILE',
                         help='use FILE as cursor bookmark file')
+    parser.add_argument('--debug')
     return parser.parse_args(sys.argv[1:])
 
 
@@ -44,6 +46,9 @@ def run():
 
     if args.cursor_file:
         kwargs['cursor_file'] = args.cursor_file
+
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
 
     formatter = EntryFormatter()
     with LatestJournalEntries(**kwargs) as entries:

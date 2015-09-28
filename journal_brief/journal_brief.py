@@ -18,6 +18,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
 from collections.abc import Iterator
 import errno
+from journal_brief.constants import CONFIG_DIR
 import os
 from systemd import journal
 
@@ -27,7 +28,7 @@ class LatestJournalEntries(Iterator):
     Iterate over new journal entries since last time
     """
 
-    DEFAULT_CURSOR_FILE = "{0}/.config/journal-brief/cursor"
+    DEFAULT_CURSOR_FILE = os.path.join(CONFIG_DIR, 'cursor')
 
     def __init__(self, cursor_file=None, log_level=None, reader=None):
         """

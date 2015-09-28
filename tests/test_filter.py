@@ -17,8 +17,40 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 """
 
 from flexmock import flexmock
-from journal_brief import JournalFilter
+from journal_brief.filter import Exclusion, JournalFilter, Config
+import logging
 from systemd import journal
+from tempfile import NamedTemporaryFile
+
+
+logging.basicConfig(level=logging.DEBUG)
+
+
+class TestExclusion(object):
+    def test_and(self):
+        exclusion = Exclusion({'MESSAGE': ['exclude this'],
+                               'SYSLOG_IDENTIFIER': ['from this']})
+        assert exclusion.matches({'MESSAGE': 'exclude this',
+                                  'SYSLOG_IDENTIFIER': 'from this',
+                                  'IGNORE': 'ignore this'})
+        assert not exclusion.matches({'MESSAGE': 'exclude this'})
+
+    def test_or(self):
+        exclusion = Exclusion({'MESSAGE': ['exclude this', 'or this']})
+        assert exclusion.matches({'MESSAGE': 'exclude this',
+                                  'IGNORE': 'ignore this'})
+        assert not exclusion.matches({'MESSAGE': 'not this',
+                                      'IGNORE': 'ignore this'})
+
+    def test_and_or(self):
+        exclusion = Exclusion({'MESSAGE': ['exclude this', 'or this'],
+                               'SYSLOG_IDENTIFIER': ['from this']})
+        assert exclusion.matches({'MESSAGE': 'exclude this',
+                                  'SYSLOG_IDENTIFIER': 'from this',
+                                  'IGNORE': 'ignore this'})
+        assert not exclusion.matches({'MESSAGE': 'exclude this',
+                                      'SYSLOG_IDENTIFIER': 'at your peril',
+                                      'IGNORE': 'ignore this'})
 
 
 class TestJournalFilter(object):
@@ -33,3 +65,37 @@ class TestJournalFilter(object):
 
         filter = JournalFilter(journal.Reader())
         assert list(filter) == entries
+
+    def test_exclusion(self):
+        entries = [{'MESSAGE': 'exclude this',
+                    'SYSLOG_IDENTIFIER': 'from here'},
+
+                   {'MESSAGE': 'message 1',
+                    'SYSLOG_IDENTIFIER': 'foo'},
+
+                   {'MESSAGE': 'exclude this',
+                    'SYSLOG_IDENTIFIER': 'at your peril'},
+
+                   {'MESSAGE': 'message 2'}]
+
+        (flexmock(journal.Reader)
+            .should_receive('get_next')
+            .and_return(entries[0])
+            .and_return(entries[1])
+            .and_return(entries[2])
+            .and_return(entries[3])
+            .and_return({}))
+        with NamedTemporaryFile(mode='wt') as tmpfile:
+            tmpfile.write("""
+exclusions:
+- MESSAGE:
+  - exclude this
+  - and this
+  SYSLOG_IDENTIFIER:
+  - from here
+""")
+            tmpfile.flush()
+            config = Config(config_file=tmpfile.name)
+
+        filter = JournalFilter(journal.Reader(), config=config)
+        assert list(filter) == entries[1:]

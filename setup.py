@@ -21,7 +21,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='journal-brief',
-    version='0.0.1',
+    version='0.0.2',  # also update journal_brief/__init__.py
     description='Show new journal entries since last run',
     author='Tim Waugh',
     author_email='tim@cyberelk.net',

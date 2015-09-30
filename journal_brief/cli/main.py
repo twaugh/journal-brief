@@ -32,7 +32,7 @@ class InstanceConfig(object):
         self.config = config
         self.args = args
 
-    def get(self, key):
+    def get(self, key, default_value=None):
         config_key = key.replace('_', '-')
         try:
             value = getattr(self.args, key)
@@ -40,7 +40,7 @@ class InstanceConfig(object):
             value = None
         finally:
             if value is None:
-                value = self.config.get(config_key)
+                value = self.config.get(config_key, default_value)
 
         return value
 
@@ -76,7 +76,8 @@ class CLI(object):
         formatter = EntryFormatter()
         with LatestJournalEntries(cursor_file=cursor_file,
                                   log_level=log_level) as entries:
-            for entry in JournalFilter(entries, config=config):
+            exclusions = self.config.get('exclusions', [])
+            for entry in JournalFilter(entries, exclusions=exclusions):
                 print(formatter.format(entry))
 
 

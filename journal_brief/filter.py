@@ -45,19 +45,19 @@ class JournalFilter(Iterator):
     Exclude certain journal entries
     """
 
-    def __init__(self, iterator, config=None):
+    def __init__(self, iterator, exclusions=None):
         """
         Constructor
 
         :param iterator: iterator, providing journal entries
+        :param exclusions: list, dicts of str(field) -> [str(match), ...]
         """
         super(JournalFilter, self).__init__()
         self.iterator = iterator
-        if config is None:
-            config = Config()
-
-        exclusions = config.get('exclusions', [])
-        self.exclusions = [Exclusion(excl) for excl in exclusions]
+        if exclusions:
+            self.exclusions = [Exclusion(excl) for excl in exclusions]
+        else:
+            self.exclusions = []
 
     def __next__(self):
         for entry in self.iterator:

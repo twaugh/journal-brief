@@ -17,11 +17,10 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 """
 
 from flexmock import flexmock
-from journal_brief import Config, JournalFilter
+from journal_brief import JournalFilter
 from journal_brief.filter import Exclusion
 import logging
 from systemd import journal
-from tempfile import NamedTemporaryFile
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -86,17 +85,8 @@ class TestJournalFilter(object):
             .and_return(entries[2])
             .and_return(entries[3])
             .and_return({}))
-        with NamedTemporaryFile(mode='wt') as tmpfile:
-            tmpfile.write("""
-exclusions:
-- MESSAGE:
-  - exclude this
-  - and this
-  SYSLOG_IDENTIFIER:
-  - from here
-""")
-            tmpfile.flush()
-            config = Config(config_file=tmpfile.name)
-
-        filter = JournalFilter(journal.Reader(), config=config)
+        exclusions = [{'MESSAGE': ['exclude this',
+                                   'and this'],
+                       'SYSLOG_IDENTIFIER': ['from here']}]
+        filter = JournalFilter(journal.Reader(), exclusions=exclusions)
         assert list(filter) == entries[1:]

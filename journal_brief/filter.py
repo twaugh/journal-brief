@@ -21,6 +21,7 @@ from collections import namedtuple
 from journal_brief.config import Config
 from logging import getLogger
 import os
+import re
 from systemd import journal
 import yaml
 
@@ -39,10 +40,33 @@ class Exclusion(dict):
         assert isinstance(mapping, dict)
         super(Exclusion, self).__init__(mapping)
         self.hits = 0
+        self.regexp = {}  # field -> index -> compiled regexp
+
+    def value_matches(self, field, index, match, value):
+        try:
+            regexp = self.regexp[field][index]
+        except KeyError:
+            if match.startswith('/') and match.endswith('/'):
+                regexp = re.compile(match[1:-1])
+                self.regexp.setdefault(field, {})
+                self.regexp[field][index] = regexp
+            else:
+                regexp = None
+
+        if regexp is not None:
+            return regexp.match(value)
+
+        return match == value
 
     def matches(self, entry):
-        for key, values in self.items():
-            if not any(entry.get(key) == value for value in values):
+        for field, matches in self.items():
+            is_match = False
+            for index, match in enumerate(matches):
+                if self.value_matches(field, index, match, entry.get(field)):
+                    is_match = True
+                    break
+
+            if not is_match:
                 return False
 
         self.hits += 1
@@ -52,6 +76,16 @@ class Exclusion(dict):
 class JournalFilter(Iterator):
     """
     Exclude certain journal entries
+
+    Provide a list of exclusions. Each exclusion is a dict whose keys
+    are fields which must all match an entry to be excluded.
+
+    The dict value for each field is a list of possible match values,
+    any of which may match.
+
+    Regular expressions are indicated with '/' at the beginning and
+    end of the match string. Regular expressions are matched at the
+    start of the journal field value (i.e. it's a match not a search).
     """
 
     def __init__(self, iterator, exclusions=None):
@@ -77,8 +111,13 @@ class JournalFilter(Iterator):
         raise StopIteration
 
     def get_statistics(self):
-        log.debug("Exclusions: %r", self.exclusions)
-        hits = [ExclusionStatistics(excl.hits, excl)
-                for excl in self.exclusions]
-        hits.sort(reverse=True)
-        return hits
+        """
+        Get filter statistics
+
+        :return: list, ExclusionStatistics instances in reverse order
+        """
+
+        stats = [ExclusionStatistics(excl.hits, excl)
+                 for excl in self.exclusions]
+        stats.sort(reverse=True, key=lambda stat: stat.hits)
+        return stats

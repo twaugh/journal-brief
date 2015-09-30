@@ -91,6 +91,30 @@ class TestJournalFilter(object):
         jfilter = JournalFilter(journal.Reader(), exclusions=exclusions)
         assert list(jfilter) == entries[1:]
 
+    def test_exclusion_regexp(self):
+        entries = [{'MESSAGE': 'exclude this'},
+                   {'MESSAGE': 'message 1'},
+                   {'MESSAGE': 'exclude that'},
+                   {'MESSAGE': 'message 2'}]
+
+        (flexmock(journal.Reader)
+            .should_receive('get_next')
+            .and_return(entries[0])
+            .and_return(entries[1])
+            .and_return(entries[2])
+            .and_return(entries[3])
+            .and_return({}))
+        exclusions = [{'MESSAGE': ['/1/']},  # shouldn't exclude anything
+                      {'MESSAGE': ['/exclude th/']},
+                      {'MESSAGE': ['/exclude/']}]
+        jfilter = JournalFilter(journal.Reader(), exclusions=exclusions)
+        assert list(jfilter) == [entries[1]] + [entries[3]]
+        stats = jfilter.get_statistics()
+        for stat in stats:
+            if stat.exclusion['MESSAGE'] == ['/1/']:
+                assert stat.hits == 0
+                break
+
     def test_statistics(self):
         (flexmock(journal.Reader)
             .should_receive('get_next')

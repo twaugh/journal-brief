@@ -38,7 +38,13 @@ class Exclusion(dict):
 
     def __init__(self, mapping):
         assert isinstance(mapping, dict)
-        super(Exclusion, self).__init__(mapping)
+
+        # Make sure everything is interpreted as a string
+        str_mapping = {}
+        for field, matches in mapping.items():
+            str_mapping[field] = [str(match) for match in matches]
+
+        super(Exclusion, self).__init__(str_mapping)
         self.hits = 0
         self.regexp = {}  # field -> index -> compiled regexp
 

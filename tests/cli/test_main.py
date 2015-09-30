@@ -129,3 +129,26 @@ exclusions:
         assert out == "\n".join([" FREQUENCY  EXCLUSION",
                                  "         1  {'MESSAGE': ['exclude']}",
                                  ""])
+
+    def test_exclusions_yaml(self, capsys):
+        (flexmock(journal.Reader)
+            .should_receive('get_next')
+            .and_return({'__CURSOR': '1',
+                         '__REALTIME_TIMESTAMP': datetime.now(),
+                         'MESSAGE': 'message'})
+            .and_return({}))
+
+        with NamedTemporaryFile(mode='rt') as cursorfile:
+            with NamedTemporaryFile(mode='wt') as configfile:
+                configfile.write("""
+cursor-file: {cursor}
+exclusions:
+- MESSAGE: [1]
+""".format(cursor=cursorfile.name))
+                configfile.flush()
+                cli = CLI(args=['--conf', configfile.name])
+                cli.run()
+
+        (out, err) = capsys.readouterr()
+        assert not err
+        assert 'message' in out

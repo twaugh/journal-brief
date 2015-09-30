@@ -24,7 +24,7 @@ from systemd import journal
 
 from journal_brief import LatestJournalEntries, EntryFormatter, JournalFilter
 from journal_brief.filter import Config
-from journal_brief.constants import CONFIG_DIR
+from journal_brief.constants import PACKAGE, CONFIG_DIR
 
 
 class InstanceConfig(object):
@@ -112,7 +112,13 @@ class CLI(object):
 
 
 def run():
-    CLI().run()
+    try:
+        CLI().run()
+    except KeyboardInterrupt:
+        pass
+    except IOError as ex:
+        sys.stderr.write("{0}: {1}\n".format(PACKAGE, os.strerror(ex.errno)))
+        sys.exit(1)
 
 
 if __name__ == '__main__':

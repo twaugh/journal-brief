@@ -120,7 +120,6 @@ cursor-file: {cursor}
 exclusions:
 - MESSAGE: [exclude]
 """.format(cursor=cursorfile.name))
-                configfile.write('cursor: {0}\n'.format(cursorfile.name))
                 configfile.flush()
                 cli = CLI(args=['--conf', configfile.name, 'stats'])
                 cli.run()

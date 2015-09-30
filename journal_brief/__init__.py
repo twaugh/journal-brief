@@ -21,4 +21,4 @@ from journal_brief.journal_brief import (LatestJournalEntries,
 from journal_brief.filter import JournalFilter
 from journal_brief.config import Config
 
-__version__ = '0.0.3'  # also update setup.py
+__version__ = '0.0.4'  # also update setup.py

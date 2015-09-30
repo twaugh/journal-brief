@@ -104,7 +104,7 @@ class EntryFormatter(object):
     Convert a journal entry into a string
     """
 
-    FORMAT = '{__REALTIME_TIMESTAMP} {MESSAGE}'
+    FORMAT = '{__REALTIME_TIMESTAMP} {_HOSTNAME} {SYSLOG_IDENTIFIER} {MESSAGE}'
     TIMESTAMP_FORMAT = '%b %d %T'
 
     def format_timestamp(self, entry, field):
@@ -127,4 +127,16 @@ class EntryFormatter(object):
         """
 
         self.format_timestamp(entry, '__REALTIME_TIMESTAMP')
+
+        if '_HOSTNAME' not in entry:
+            entry['_HOSTNAME'] = 'localhost'
+
+        if 'SYSLOG_IDENTIFIER' not in entry:
+            entry['SYSLOG_IDENTIFIER'] = entry.get('_COMM', '?')
+
+        if '_PID' in entry:
+            entry['SYSLOG_IDENTIFIER'] += '[{0}]'.format(entry['_PID'])
+        elif 'SYSLOG_PID' in entry:
+            entry['SYSLOG_IDENTIFIER'] += '[{0}]'.format(entry['SYSLOG_PID'])
+
         return self.FORMAT.format(**entry)

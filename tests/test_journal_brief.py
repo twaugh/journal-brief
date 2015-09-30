@@ -21,6 +21,7 @@ from flexmock import flexmock
 from journal_brief import LatestJournalEntries, EntryFormatter
 from systemd import journal
 import os
+import pytest
 
 
 class TestLatestJournalEntries(object):
@@ -87,6 +88,46 @@ class TestEntryFormatter(object):
         formatter = EntryFormatter()
 
         # Should output in local time
-        expected = 'Jan 01 01:00:00 epoch'
+        expected = 'Jan 01 01:00:00'
 
-        assert formatter.format(entry) == expected
+        assert expected in formatter.format(entry)
+
+    @pytest.mark.parametrize(('entry', 'expected'), [
+        ({'MESSAGE': 'message'},
+         'localhost ? message'),
+
+        ({'_HOSTNAME': 'host',
+          'MESSAGE': 'message'},
+         'host ? message'),
+
+        ({'_HOSTNAME': 'host',
+          '_COMM': 'comm',
+          'MESSAGE': 'message'},
+         'host comm message'),
+
+        ({'_HOSTNAME': 'host',
+          '_COMM': 'comm',
+          '_PID': '1',
+          'MESSAGE': 'message'},
+         'host comm[1] message'),
+
+        ({'_HOSTNAME': 'host',
+          'SYSLOG_IDENTIFIER': 'syslogid',
+          '_COMM': 'comm',
+          'MESSAGE': 'message'},
+         'host syslogid message'),
+
+        ({'_HOSTNAME': 'host',
+          'SYSLOG_IDENTIFIER': 'syslogid',
+          '_PID': '1',
+          'MESSAGE': 'message'},
+         'host syslogid[1] message'),
+    ])
+    def test_format(self, entry, expected):
+        entry['__REALTIME_TIMESTAMP'] = datetime.fromtimestamp(0,
+                                                               tz=timezone.utc)
+        formatter = EntryFormatter()
+        formatted = formatter.format(entry)
+        date = 'Jan 01 00:00:00 '
+        assert formatted.startswith(date)
+        assert formatted[len(date):] == expected

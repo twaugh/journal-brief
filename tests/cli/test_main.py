@@ -16,8 +16,11 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 ## Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 """
 
+from datetime import datetime
+from flexmock import flexmock
 from journal_brief.cli.main import CLI
 import logging
+from systemd import journal
 from tempfile import NamedTemporaryFile
 
 
@@ -27,9 +30,7 @@ logging.basicConfig(level=logging.DEBUG)
 class TestCLI(object):
     def test_param_override(self):
         with NamedTemporaryFile(mode='wt') as configfile:
-            configfile.write("""
-priority: err
-""")
+            configfile.write('priority: err')
             configfile.flush()
             cli = CLI(args=['--conf', configfile.name])
 
@@ -43,3 +44,19 @@ priority: err
             cli = CLI(args=['--conf', configfile.name,
                             '-p', 'debug'])
             assert cli.config.get('priority') == 'debug'
+
+    def test_dry_run(self):
+        (flexmock(journal.Reader)
+            .should_receive('get_next')
+            .and_return({'__CURSOR': '1',
+                         '__REALTIME_TIMESTAMP': datetime.now(),
+                         'MESSAGE': 'message'})
+            .and_return({}))
+
+        with NamedTemporaryFile(mode='wt') as configfile:
+            with NamedTemporaryFile(mode='rt') as cursorfile:
+                configfile.write('cursor-file: {0}\n'.format(cursorfile.name))
+                configfile.flush()
+                cli = CLI(args=['--conf', configfile.name, '--dry-run'])
+                cli.run()
+                assert not cursorfile.read()

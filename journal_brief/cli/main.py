@@ -47,9 +47,9 @@ class InstanceConfig(object):
 
 class CLI(object):
     def __init__(self, args=None):
-        args = self.get_args(args or sys.argv[1:])
-        config = Config(config_file=args.conf)
-        self.config = InstanceConfig(config, args)
+        self.args = self.get_args(args or sys.argv[1:])
+        config = Config(config_file=self.args.conf)
+        self.config = InstanceConfig(config, self.args)
 
     def get_args(self, args):
         description = 'Show new journal entries since last run'
@@ -60,6 +60,8 @@ class CLI(object):
                                      'warning', 'notice', 'info', 'debug'])
         parser.add_argument('--conf', metavar='FILE',
                             help='use FILE as config file')
+        parser.add_argument('--dry-run', action='store_true', default=False,
+                            help='do not update cursor bookmark file')
         return parser.parse_args(args)
 
     def run(self):
@@ -75,7 +77,8 @@ class CLI(object):
 
         formatter = EntryFormatter()
         with LatestJournalEntries(cursor_file=cursor_file,
-                                  log_level=log_level) as entries:
+                                  log_level=log_level,
+                                  dry_run=self.args.dry_run) as entries:
             exclusions = self.config.get('exclusions', [])
             for entry in JournalFilter(entries, exclusions=exclusions):
                 print(formatter.format(entry))

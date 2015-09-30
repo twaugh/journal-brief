@@ -19,8 +19,12 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 from collections.abc import Iterator
 import errno
 from journal_brief.constants import CONFIG_DIR
+from logging import getLogger
 import os
 from systemd import journal
+
+
+log = getLogger(__name__)
 
 
 class LatestJournalEntries(Iterator):
@@ -28,7 +32,8 @@ class LatestJournalEntries(Iterator):
     Iterate over new journal entries since last time
     """
 
-    def __init__(self, cursor_file=None, log_level=None, reader=None):
+    def __init__(self, cursor_file=None, log_level=None, reader=None,
+                 dry_run=False):
         """
         Constructor
 
@@ -55,17 +60,22 @@ class LatestJournalEntries(Iterator):
             reader.log_level(log_level)
 
         if self.cursor:
+            log.debug("Seeking to %s", self.cursor)
             reader.seek_cursor(self.cursor)
             reader.get_next()
         else:
             reader.this_boot()
 
         self.reader = reader
+        self.dry_run = dry_run
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.dry_run:
+            return
+
         path = os.path.dirname(self.cursor_file)
         try:
             os.makedirs(path)

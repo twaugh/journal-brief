@@ -33,7 +33,7 @@ class LatestJournalEntries(Iterator):
     """
 
     def __init__(self, cursor_file=None, log_level=None, reader=None,
-                 dry_run=False):
+                 dry_run=False, this_boot=False):
         """
         Constructor
 
@@ -59,7 +59,7 @@ class LatestJournalEntries(Iterator):
         if log_level is not None:
             reader.log_level(log_level)
 
-        if self.cursor:
+        if self.cursor and not this_boot:
             log.debug("Seeking to %s", self.cursor)
             reader.seek_cursor(self.cursor)
             reader.get_next()

@@ -63,6 +63,29 @@ class TestCLI(object):
                 cli.run()
                 assert not cursorfile.read()
 
+    def test_this_boot(self):
+        final_cursor = '1'
+        (flexmock(journal.Reader)
+            .should_receive('this_boot')
+            .once())
+        (flexmock(journal.Reader)
+            .should_receive('get_next')
+            .and_return({'__CURSOR': final_cursor,
+                         '__REALTIME_TIMESTAMP': datetime.now(),
+                         'MESSAGE': 'message'})
+            .and_return({}))
+
+        with NamedTemporaryFile(mode='wt') as configfile:
+            with NamedTemporaryFile(mode='w+t') as cursorfile:
+                configfile.write('cursor-file: {0}\n'.format(cursorfile.name))
+                configfile.flush()
+                cursorfile.write(final_cursor)
+                cursorfile.flush()
+                cli = CLI(args=['--conf', configfile.name, '-b'])
+                cli.run()
+                cursorfile.seek(0)
+                assert cursorfile.read() == final_cursor
+
     def test_reset(self):
         with NamedTemporaryFile(mode='wt') as configfile:
             with NamedTemporaryFile(mode='rt') as cursorfile:

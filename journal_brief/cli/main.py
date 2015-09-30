@@ -54,6 +54,8 @@ class CLI(object):
     def get_args(self, args):
         description = 'Show new journal entries since last run'
         parser = argparse.ArgumentParser(description=description)
+        parser.add_argument('-b', action='store_true', default=False,
+                            help='process all entries from the current boot')
         parser.add_argument('-p', '--priority', metavar='PRI',
                             help='show entries at priority PRI and lower',
                             choices=['emerg', 'alert', 'crit', 'err',
@@ -102,7 +104,8 @@ class CLI(object):
         formatter = EntryFormatter()
         with LatestJournalEntries(cursor_file=cursor_file,
                                   log_level=log_level,
-                                  dry_run=self.args.dry_run) as entries:
+                                  dry_run=self.args.dry_run,
+                                  this_boot=self.args.b) as entries:
             exclusions = self.config.get('exclusions', [])
             if self.args.cmd == 'stats':
                 self.show_stats(entries, exclusions)

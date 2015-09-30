@@ -76,7 +76,39 @@ class TestLatestJournalEntries(object):
 
         assert e == results[1:]
         with open(cursor_file, 'rt') as fp:
-            assert fp.read() == final_cursor        
+            assert fp.read() == final_cursor
+
+    def test_this_boot(self, tmpdir):
+        last_cursor = '2'
+        final_cursor = '3'
+        results = [{'__CURSOR': '1'},
+                   {'__CURSOR': last_cursor},
+                   {'__CURSOR': final_cursor}]
+
+        (flexmock(journal.Reader)
+            .should_receive('seek_cursor')
+            .never())
+        (flexmock(journal.Reader)
+            .should_receive('this_boot')
+            .once())
+        (flexmock(journal.Reader)
+            .should_receive('get_next')
+            .and_return(results[0])
+            .and_return(results[1])
+            .and_return(results[2])
+            .and_return({}))
+
+        cursor_file = os.path.join(str(tmpdir), 'cursor')
+        with open(cursor_file, 'wt') as fp:
+            fp.write(last_cursor)
+
+        with LatestJournalEntries(cursor_file=cursor_file,
+                                  this_boot=True) as entries:
+            e = list(entries)
+
+        assert e == results
+        with open(cursor_file, 'rt') as fp:
+            fp.read() == final_cursor
 
 
 class TestEntryFormatter(object):

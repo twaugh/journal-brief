@@ -63,8 +63,8 @@ class TestJournalFilter(object):
             .and_return(entries[1])
             .and_return({}))
 
-        filter = JournalFilter(journal.Reader())
-        assert list(filter) == entries
+        jfilter = JournalFilter(journal.Reader())
+        assert list(jfilter) == entries
 
     def test_exclusion(self):
         entries = [{'MESSAGE': 'exclude this',

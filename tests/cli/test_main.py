@@ -20,6 +20,7 @@ from datetime import datetime
 from flexmock import flexmock
 from journal_brief.cli.main import CLI
 import logging
+import os
 from systemd import journal
 from tempfile import NamedTemporaryFile
 
@@ -60,3 +61,19 @@ class TestCLI(object):
                 cli = CLI(args=['--conf', configfile.name, '--dry-run'])
                 cli.run()
                 assert not cursorfile.read()
+
+    def test_reset(self):
+        with NamedTemporaryFile(mode='wt') as configfile:
+            with NamedTemporaryFile(mode='rt') as cursorfile:
+                configfile.write('cursor-file: {0}\n'.format(cursorfile.name))
+                configfile.flush()
+                cli = CLI(args=['--conf', configfile.name, 'reset'])
+                cli.run()
+                # Cursor file is deleted
+                assert not os.access(cursorfile.name, os.F_OK)
+                open(cursorfile.name, mode='w').close()
+
+            # No errors when the cursor file doesn't exist
+            cli = CLI(args=['--conf', configfile.name, 'reset'])
+            cli.run()
+            assert not os.access(cursorfile.name, os.F_OK)

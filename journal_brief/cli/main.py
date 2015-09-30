@@ -62,12 +62,24 @@ class CLI(object):
                             help='use FILE as config file')
         parser.add_argument('--dry-run', action='store_true', default=False,
                             help='do not update cursor bookmark file')
+
+        cmds = parser.add_subparsers(dest='cmd')
+        cmds.add_parser('reset', help='reset cursor bookmark and exit')
         return parser.parse_args(args)
 
     def run(self):
         cursor_file = self.config.get('cursor_file')
         if not cursor_file.startswith('/'):
             cursor_file = os.path.join(CONFIG_DIR, cursor_file)
+
+        if self.args.cmd == 'reset':
+            logging.debug('reset: removing %r', cursor_file)
+            try:
+                os.unlink(cursor_file)
+            except IOError:
+                pass
+
+            return
 
         log_level = None
         priority = self.config.get('priority')

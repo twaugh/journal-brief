@@ -18,10 +18,13 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
 from datetime import datetime, timezone, timedelta
 from flexmock import flexmock
+from inspect import getsourcefile
+import journal_brief
 from journal_brief import LatestJournalEntries, EntryFormatter
 from systemd import journal
 import os
 import pytest
+import re
 
 
 class TestLatestJournalEntries(object):
@@ -163,3 +166,16 @@ class TestEntryFormatter(object):
         date = 'Jan 01 00:00:00 '
         assert formatted.startswith(date)
         assert formatted[len(date):] == expected
+
+
+def test_version():
+    """
+    Check the version numbers agree
+    """
+    this_file = getsourcefile(test_version)
+    regexp = re.compile(r"\s+version='([0-9.]+)',  # also update")
+    with open(os.path.join(os.path.dirname(this_file), '../setup.py')) as fp:
+        matches = map(regexp.match, fp.readlines())
+        matches = [match for match in matches if match]
+        assert len(matches) == 1
+        assert matches[0].groups()[0] == journal_brief.__version__

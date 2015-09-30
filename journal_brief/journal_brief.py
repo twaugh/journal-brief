@@ -104,7 +104,7 @@ class EntryFormatter(object):
     Convert a journal entry into a string
     """
 
-    FORMAT = '{__REALTIME_TIMESTAMP} {_HOSTNAME} {SYSLOG_IDENTIFIER} {MESSAGE}'
+    FORMAT = '{__REALTIME_TIMESTAMP} {_HOSTNAME} {SYSLOG_IDENTIFIER}: {MESSAGE}'
     TIMESTAMP_FORMAT = '%b %d %T'
 
     def format_timestamp(self, entry, field):

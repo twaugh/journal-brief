@@ -1,5 +1,5 @@
 # journal-brief
-Show new journal entries since last run.
+Show new systemd journal entries since last run.
 
 This can be run from cron to get a briefing of journal entries sent by
 email.  Example:
@@ -13,7 +13,13 @@ exec journal-brief -p err
 ## Configuration
 
 A YAML configuration in `~/.config/journal-brief.conf` defines which
-journal entries should be ignored.  For example:
+journal entries should be ignored.
+
+Each exclusion is defined by a list of journal fields and their
+possible matches. All fields in an exclusion must match at least one
+of their possible match values for an entry to be excluded.
+
+For example:
 
 ```yaml
 exclusions:
@@ -30,6 +36,9 @@ satisfy both conditions: `SYSLOG_IDENTIFIER` is `from here`, and
 `MESSAGE` is either `exclude this` or `exclude this too`.
 
 It will also ignore any entries with the specified `MESSAGE_ID`.
+
+The available journal fields are described in the
+systemd.journal-fields(7) manual page.
 
 ## Install
 

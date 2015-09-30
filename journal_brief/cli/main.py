@@ -65,7 +65,19 @@ class CLI(object):
 
         cmds = parser.add_subparsers(dest='cmd')
         cmds.add_parser('reset', help='reset cursor bookmark and exit')
+        cmds.add_parser('stats', help='show statistics')
         return parser.parse_args(args)
+
+    def show_stats(self, entries, exclusions):
+        logging.debug('exclusions: %r', exclusions)
+        jfilter = JournalFilter(entries, exclusions=exclusions)
+        list(jfilter)
+        stats = jfilter.get_statistics()
+        logging.debug("stats: %r", stats)
+        strf = "{FREQ:>10}  {EXCLUSION}"
+        print(strf.format(FREQ='FREQUENCY', EXCLUSION='EXCLUSION'))
+        for stat in stats:
+            print(strf.format(FREQ=stat.hits, EXCLUSION=repr(stat.exclusion)))
 
     def run(self):
         cursor_file = self.config.get('cursor_file')
@@ -92,8 +104,11 @@ class CLI(object):
                                   log_level=log_level,
                                   dry_run=self.args.dry_run) as entries:
             exclusions = self.config.get('exclusions', [])
-            for entry in JournalFilter(entries, exclusions=exclusions):
-                print(formatter.format(entry))
+            if self.args.cmd == 'stats':
+                self.show_stats(entries, exclusions)
+            else:
+                for entry in JournalFilter(entries, exclusions=exclusions):
+                    print(formatter.format(entry))
 
 
 def run():

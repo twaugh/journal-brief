@@ -17,6 +17,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 """
 
 from collections.abc import Iterator
+from collections import namedtuple
 from journal_brief.config import Config
 from logging import getLogger
 import os
@@ -25,6 +26,7 @@ import yaml
 
 
 log = getLogger(__name__)
+ExclusionStatistics = namedtuple('ExclusionStatistics', ['hits', 'exclusion'])
 
 
 # dict, field -> list of values
@@ -32,11 +34,18 @@ class Exclusion(dict):
     """
     str (field) -> list (str values)
     """
+
+    def __init__(self, mapping):
+        assert isinstance(mapping, dict)
+        super(Exclusion, self).__init__(mapping)
+        self.hits = 0
+
     def matches(self, entry):
         for key, values in self.items():
             if not any(entry.get(key) == value for value in values):
                 return False
 
+        self.hits += 1
         return True
 
 
@@ -66,3 +75,10 @@ class JournalFilter(Iterator):
                 return entry
 
         raise StopIteration
+
+    def get_statistics(self):
+        log.debug("Exclusions: %r", self.exclusions)
+        hits = [ExclusionStatistics(excl.hits, excl)
+                for excl in self.exclusions]
+        hits.sort(reverse=True)
+        return hits

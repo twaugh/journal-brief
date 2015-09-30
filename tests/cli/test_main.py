@@ -19,6 +19,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 from datetime import datetime
 from flexmock import flexmock
 from journal_brief.cli.main import CLI
+from journal_brief.filter import JournalFilter
 import logging
 import os
 from systemd import journal
@@ -77,3 +78,32 @@ class TestCLI(object):
             cli = CLI(args=['--conf', configfile.name, 'reset'])
             cli.run()
             assert not os.access(cursorfile.name, os.F_OK)
+
+    def test_stats(self, capsys):
+        (flexmock(journal.Reader)
+            .should_receive('get_next')
+            .and_return({'__CURSOR': '1',
+                         '__REALTIME_TIMESTAMP': datetime.now(),
+                         'MESSAGE': 'exclude'})
+            .and_return({'__CURSOR': '2',
+                         '__REALTIME_TIMESTAMP': datetime.now(),
+                         'MESSAGE': 'include'})
+            .and_return({}))
+
+        with NamedTemporaryFile(mode='rt') as cursorfile:
+            with NamedTemporaryFile(mode='wt') as configfile:
+                configfile.write("""
+cursor-file: {cursor}
+exclusions:
+- MESSAGE: [exclude]
+""".format(cursor=cursorfile.name))
+                configfile.write('cursor: {0}\n'.format(cursorfile.name))
+                configfile.flush()
+                cli = CLI(args=['--conf', configfile.name, 'stats'])
+                cli.run()
+
+        (out, err) = capsys.readouterr()
+        assert not err
+        assert out == "\n".join([" FREQUENCY  EXCLUSION",
+                                 "         1  {'MESSAGE': ['exclude']}",
+                                 ""])

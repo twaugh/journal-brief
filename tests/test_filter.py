@@ -88,5 +88,19 @@ class TestJournalFilter(object):
         exclusions = [{'MESSAGE': ['exclude this',
                                    'and this'],
                        'SYSLOG_IDENTIFIER': ['from here']}]
-        filter = JournalFilter(journal.Reader(), exclusions=exclusions)
-        assert list(filter) == entries[1:]
+        jfilter = JournalFilter(journal.Reader(), exclusions=exclusions)
+        assert list(jfilter) == entries[1:]
+
+    def test_statistics(self):
+        (flexmock(journal.Reader)
+            .should_receive('get_next')
+            .and_return({'MESSAGE': 'exclude'})
+            .and_return({'MESSAGE': 'include'})
+            .and_return({}))
+
+        exclusions = [{'MESSAGE': ['exclude']}]
+        jfilter = JournalFilter(journal.Reader(), exclusions=exclusions)
+        list(jfilter)
+        statistics = jfilter.get_statistics()
+        assert len(statistics) == 1
+        assert statistics[0].hits == 1

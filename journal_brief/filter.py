@@ -50,14 +50,20 @@ class Exclusion(dict):
 
     def value_matches(self, field, index, match, value):
         try:
+            log.debug('using cached regexp for %s[%d]:%s',
+                      field, index, match)
             regexp = self.regexp[field][index]
         except KeyError:
             if match.startswith('/') and match.endswith('/'):
-                regexp = re.compile(match[1:-1])
-                self.regexp.setdefault(field, {})
-                self.regexp[field][index] = regexp
+                pattern = match[1:-1]
+                log.debug('compiling pattern %r', pattern)
+                regexp = re.compile(pattern)
             else:
                 regexp = None
+                log.debug('%r is not a regex', match)
+
+            self.regexp.setdefault(field, {})
+            self.regexp[field][index] = regexp
 
         if regexp is not None:
             return regexp.match(value)

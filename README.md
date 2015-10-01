@@ -12,8 +12,8 @@ exec journal-brief -p err
 
 ## Configuration
 
-A YAML configuration in `~/.config/journal-brief.conf` defines which
-journal entries should be ignored.
+A YAML configuration in `~/.config/journal-brief/journal-brief.conf`
+defines which journal entries should be ignored.
 
 Each exclusion is defined by a list of journal fields and their
 possible matches. All fields in an exclusion must match at least one

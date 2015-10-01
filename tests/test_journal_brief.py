@@ -20,7 +20,7 @@ from datetime import datetime, timezone, timedelta
 from flexmock import flexmock
 from inspect import getsourcefile
 import journal_brief
-from journal_brief import SelectiveReader, LatestJournalEntries, EntryFormatter
+from journal_brief import SelectiveReader, LatestJournalEntries
 from systemd import journal
 import os
 import pytest
@@ -204,60 +204,6 @@ class TestLatestJournalEntries(object):
         assert e == results
         with open(cursor_file, 'rt') as fp:
             assert fp.read() == final_cursor
-
-
-class TestEntryFormatter(object):
-    def test_timestamp(self):
-        dt = datetime.fromtimestamp(0, tz=timezone(timedelta(hours=1)))
-        entry = {'__REALTIME_TIMESTAMP': dt,
-                 'MESSAGE': 'epoch'}
-
-        formatter = EntryFormatter()
-
-        # Should output in local time
-        expected = 'Jan 01 01:00:00'
-
-        assert expected in formatter.format(entry)
-
-    @pytest.mark.parametrize(('entry', 'expected'), [
-        ({'MESSAGE': 'message'},
-         'localhost ?: message'),
-
-        ({'_HOSTNAME': 'host',
-          'MESSAGE': 'message'},
-         'host ?: message'),
-
-        ({'_HOSTNAME': 'host',
-          '_COMM': 'comm',
-          'MESSAGE': 'message'},
-         'host comm: message'),
-
-        ({'_HOSTNAME': 'host',
-          '_COMM': 'comm',
-          '_PID': '1',
-          'MESSAGE': 'message'},
-         'host comm[1]: message'),
-
-        ({'_HOSTNAME': 'host',
-          'SYSLOG_IDENTIFIER': 'syslogid',
-          '_COMM': 'comm',
-          'MESSAGE': 'message'},
-         'host syslogid: message'),
-
-        ({'_HOSTNAME': 'host',
-          'SYSLOG_IDENTIFIER': 'syslogid',
-          '_PID': '1',
-          'MESSAGE': 'message'},
-         'host syslogid[1]: message'),
-    ])
-    def test_format(self, entry, expected):
-        entry['__REALTIME_TIMESTAMP'] = datetime.fromtimestamp(0,
-                                                               tz=timezone.utc)
-        formatter = EntryFormatter()
-        formatted = formatter.format(entry)
-        date = 'Jan 01 00:00:00 '
-        assert formatted.startswith(date)
-        assert formatted[len(date):] == expected
 
 
 def test_version():

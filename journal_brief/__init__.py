@@ -16,10 +16,9 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 ## Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 """
 
-from journal_brief.journal_brief import (SelectiveReader,
-                                         LatestJournalEntries,
-                                         EntryFormatter)
+from journal_brief.journal_brief import SelectiveReader, LatestJournalEntries
 from journal_brief.filter import JournalFilter
+from journal_brief.format import list_formatters, get_formatter
 from journal_brief.config import Config
 
 __version__ = '0.0.5'  # also update setup.py

@@ -24,7 +24,8 @@ from systemd import journal
 
 from journal_brief import (SelectiveReader,
                            LatestJournalEntries,
-                           EntryFormatter,
+                           get_formatter,
+                           list_formatters,
                            JournalFilter)
 from journal_brief.config import Config
 from journal_brief.constants import PACKAGE, CONFIG_DIR, PRIORITY_MAP
@@ -76,6 +77,9 @@ class CLI(object):
                             help='enable debugging')
         parser.add_argument('--dry-run', action='store_true', default=False,
                             help='do not update cursor bookmark file')
+        parser.add_argument('-o', '--output', metavar='FORMAT',
+                            help='output format for journal entries',
+                            choices=list_formatters())
 
         cmds = parser.add_subparsers(dest='cmd')
         cmds.add_parser('reset', help='reset cursor bookmark and exit')
@@ -116,7 +120,8 @@ class CLI(object):
             log_level = int(PRIORITY_MAP[priority])
             log.debug("priority=%r from args/config", log_level)
 
-        formatter = EntryFormatter()
+        output = self.config.get('output', 'short')
+        formatter = get_formatter(output)
         reader = SelectiveReader(this_boot=self.args.b,
                                  log_level=log_level,
                                  inclusions=self.config.get('inclusions'))

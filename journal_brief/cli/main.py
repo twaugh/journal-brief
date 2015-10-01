@@ -26,8 +26,8 @@ from journal_brief import (SelectiveReader,
                            LatestJournalEntries,
                            EntryFormatter,
                            JournalFilter)
-from journal_brief.constants import PACKAGE, CONFIG_DIR
 from journal_brief.config import Config
+from journal_brief.constants import PACKAGE, CONFIG_DIR, PRIORITY_MAP
 
 
 class InstanceConfig(object):
@@ -101,16 +101,16 @@ class CLI(object):
         log_level = None
         priority = self.config.get('priority')
         if priority:
-            attr = 'LOG_' + priority.upper()
-            log_level = getattr(journal, attr)
+            log_level = int(PRIORITY_MAP[priority])
 
         formatter = EntryFormatter()
-        reader = SelectiveReader(inclusions=self.config.get('inclusions'))
+        reader = SelectiveReader(this_boot=self.args.b,
+                                 log_level=log_level,
+                                 inclusions=self.config.get('inclusions'))
         with LatestJournalEntries(cursor_file=cursor_file,
-                                  log_level=log_level,
                                   reader=reader,
                                   dry_run=self.args.dry_run,
-                                  this_boot=self.args.b) as entries:
+                                  seek_cursor=not self.args.b) as entries:
             exclusions = self.config.get('exclusions', [])
             if self.args.cmd == 'stats':
                 self.show_stats(entries, exclusions)

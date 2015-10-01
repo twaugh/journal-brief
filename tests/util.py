@@ -23,12 +23,8 @@ class Watcher(object):
     def __init__(self):
         self.calls = []
 
-    @property
-    def calls_args_only(self):
-        return [call[:-1] for call in self.calls]
-
     def watch_call(self, func):
         return functools.partial(self.called, func)
 
     def called(self, func, *args, **kwargs):
-        self.calls.append((func, args, kwargs))
+        self.calls.append((func, args, repr(kwargs)))

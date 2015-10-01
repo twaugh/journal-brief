@@ -70,6 +70,9 @@ class TestJournalFilter(object):
         entries = [{'MESSAGE': 'exclude this',
                     'SYSLOG_IDENTIFIER': 'from here'},
 
+                   {'PRIORITY': '6',
+                    'MESSAGE': 'exclude this too'},
+
                    {'MESSAGE': 'message 1',
                     'SYSLOG_IDENTIFIER': 'foo'},
 
@@ -84,12 +87,14 @@ class TestJournalFilter(object):
             .and_return(entries[1])
             .and_return(entries[2])
             .and_return(entries[3])
+            .and_return(entries[4])
             .and_return({}))
         exclusions = [{'MESSAGE': ['exclude this',
                                    'and this'],
-                       'SYSLOG_IDENTIFIER': ['from here']}]
+                       'SYSLOG_IDENTIFIER': ['from here']},
+                      {'PRIORITY': ['info']}]
         jfilter = JournalFilter(journal.Reader(), exclusions=exclusions)
-        assert list(jfilter) == entries[1:]
+        assert list(jfilter) == entries[2:]
 
     def test_exclusion_regexp(self):
         entries = [{'MESSAGE': 'exclude this'},

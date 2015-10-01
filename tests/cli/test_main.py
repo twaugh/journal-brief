@@ -87,6 +87,22 @@ class TestCLI(object):
                 cursorfile.seek(0)
                 assert cursorfile.read() == final_cursor
 
+    def test_log_level(self):
+        (flexmock(journal.Reader)
+            .should_receive('log_level')
+            .with_args(journal.LOG_ERR)
+            .once())
+        (flexmock(journal.Reader)
+            .should_receive('get_next')
+            .and_return({}))
+
+        with NamedTemporaryFile(mode='wt') as configfile:
+            with NamedTemporaryFile(mode='rt') as cursorfile:
+                configfile.write('cursor-file: {0}\n'.format(cursorfile.name))
+                configfile.flush()
+                cli = CLI(args=['--conf', configfile.name, '-p', 'err'])
+                cli.run()
+
     def test_reset(self):
         with NamedTemporaryFile(mode='wt') as configfile:
             with NamedTemporaryFile(mode='rt') as cursorfile:
@@ -183,27 +199,23 @@ inclusions:
                 cli.run()
 
         # Should add matches for all of the first group
-        assert set(watcher.calls_args_only[:4]) == set([
-            ('add_match', ('PRIORITY=0',)),
-            ('add_match', ('PRIORITY=1',)),
-            ('add_match', ('PRIORITY=2',)),
-            ('add_match', ('PRIORITY=3',)),
+        assert set(watcher.calls[:4]) == set([
+            ('add_match', (), "{'PRIORITY': '0'}"),
+            ('add_match', (), "{'PRIORITY': '1'}"),
+            ('add_match', (), "{'PRIORITY': '2'}"),
+            ('add_match', (), "{'PRIORITY': '3'}"),
         ])
 
         # Then a disjunction
-        assert watcher.calls[4] == ('add_disjunction', (), {})
+        assert watcher.calls[4] == ('add_disjunction', (), '{}')
 
         # Then matches for all of the second group
-        assert set(watcher.calls_args_only[5:9]) == set([
-            ('add_match', ('PRIORITY=4',)),
-            ('add_match', ('PRIORITY=5',)),
-            ('add_match', ('PRIORITY=6',)),
-            ('add_match', ('_SYSTEMD_UNIT=myservice.service',)),
+        assert set(watcher.calls[5:9]) == set([
+            ('add_match', (), "{'PRIORITY': '4'}"),
+            ('add_match', (), "{'PRIORITY': '5'}"),
+            ('add_match', (), "{'PRIORITY': '6'}"),
+            ('add_match', (), "{'_SYSTEMD_UNIT': 'myservice.service'}"),
         ])
 
-        # Another disjuction
-        assert watcher.calls[9] == ('add_disjunction', (), {})
-
-        # Finally, this_boot() would be called, adding another match
-        assert watcher.calls[10][:2] == ('add_match', ())
-        assert list(watcher.calls[10][2].keys()) == ['_BOOT_ID']
+        # And a final disjuction
+        assert watcher.calls[9] == ('add_disjunction', (), '{}')

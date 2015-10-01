@@ -29,47 +29,103 @@ from tests.util import Watcher
 
 
 class TestSelectiveReader(object):
-    def test_inclusions(self):
+    def watch_reader(self):
         (flexmock(journal.Reader)
             .should_receive('get_next')
             .and_return({}))
         watcher = Watcher()
-        (flexmock(journal.Reader)
-            .should_receive('add_match')
-            .replace_with(watcher.watch_call('add_match')))
-        (flexmock(journal.Reader)
-            .should_receive('add_conjunction')
-            .replace_with(watcher.watch_call('add_conjunction')))
-        (flexmock(journal.Reader)
-            .should_receive('add_disjunction')
-            .replace_with(watcher.watch_call('add_disjunction')))
+        for func in ['add_match',
+                     'add_conjunction',
+                     'add_disjunction',
+                     'log_level',
+                     'this_boot']:
+            (flexmock(journal.Reader)
+                .should_receive(func)
+                .replace_with(watcher.watch_call(func)))
 
-        inclusions = [{'PRIORITY': ['0', '1', '2', '3']},
+        return watcher
+
+    def test_inclusions(self):
+        watcher = self.watch_reader()
+        inclusions = [{'PRIORITY': ['emerg', 'alert', 'crit', 'err']},
                       {'PRIORITY': ['4', '5', '6'],
                        '_SYSTEMD_UNIT': ['myservice.service']}]
-        reader = SelectiveReader(inclusions=inclusions)
+        SelectiveReader(log_level=0, this_boot=True, inclusions=inclusions)
 
         # Should add matches for all of the first group
-        assert set(watcher.calls_args_only[:4]) == set([
-            ('add_match', ('PRIORITY=0',)),
-            ('add_match', ('PRIORITY=1',)),
-            ('add_match', ('PRIORITY=2',)),
-            ('add_match', ('PRIORITY=3',)),
+        assert set(watcher.calls[:4]) == set([
+            ('add_match', (), "{'PRIORITY': '0'}"),
+            ('add_match', (), "{'PRIORITY': '1'}"),
+            ('add_match', (), "{'PRIORITY': '2'}"),
+            ('add_match', (), "{'PRIORITY': '3'}"),
         ])
+
+        # Then a this_boot() match
+        assert watcher.calls[4][0] == 'this_boot'
+
+        # Then a log_level() match
+        assert watcher.calls[5] == ('log_level', (0,), '{}')
 
         # Then a disjunction
-        assert watcher.calls[4] == ('add_disjunction', (), {})
+        assert watcher.calls[6][0] == 'add_disjunction'
 
         # Then matches for all of the second group
-        assert set(watcher.calls_args_only[5:9]) == set([
-            ('add_match', ('PRIORITY=4',)),
-            ('add_match', ('PRIORITY=5',)),
-            ('add_match', ('PRIORITY=6',)),
-            ('add_match', ('_SYSTEMD_UNIT=myservice.service',)),
+        assert set(watcher.calls[7:11]) == set([
+            ('add_match', (), "{'PRIORITY': '4'}"),
+            ('add_match', (), "{'PRIORITY': '5'}"),
+            ('add_match', (), "{'PRIORITY': '6'}"),
+            ('add_match', (), "{'_SYSTEMD_UNIT': 'myservice.service'}"),
         ])
 
+        # Then a this_boot() match
+        assert watcher.calls[11][0] == 'this_boot'
+
+        # Then a log_level() match
+        assert watcher.calls[12] == ('log_level', (0,), '{}')
+
         # And a final disjunction
-        assert watcher.calls[9] == ('add_disjunction', (), {})
+        assert watcher.calls[13] == ('add_disjunction', (), '{}')
+
+        # No more
+        assert len(watcher.calls) == 14
+
+    def test_inclusion_log_level(self):
+        watcher = self.watch_reader()
+        inclusions = [{'PRIORITY': '0'},  # no effect, log_level==1
+                      {'PRIORITY': '2'}]
+        SelectiveReader(log_level=1, inclusions=inclusions)
+
+        # Matches for {'PRIORITY': '0'}
+        assert set(watcher.calls[0:2]) == set([
+            ('log_level', (0,), '{}'),
+            ('log_level', (1,), '{}'),
+        ])
+
+        # A disjunction
+        assert watcher.calls[2] == ('add_disjunction', (), '{}')
+
+        # Matches for {'PRIORITY': '2'}
+        assert set(watcher.calls[3:5]) == set([
+            ('log_level', (2,), '{}'),
+            ('log_level', (1,), '{}'),
+        ])
+
+        # A final disjunction
+        assert watcher.calls[5] == ('add_disjunction', (), '{}')
+        assert len(watcher.calls) == 6
+
+    def test_no_inclusions(self):
+        watcher = self.watch_reader()
+        SelectiveReader(log_level=0, this_boot=True)
+
+        # Should have two matches
+        assert len(watcher.calls) == 2
+
+        # A this_boot() match
+        assert watcher.calls[0][0] == 'this_boot'
+
+        # And a log_level() match
+        assert watcher.calls[1] == ('log_level', (0,), '{}')
 
 
 class TestLatestJournalEntries(object):
@@ -78,9 +134,6 @@ class TestLatestJournalEntries(object):
         (flexmock(journal.Reader)
             .should_receive('seek_cursor')
             .never())
-        (flexmock(journal.Reader)
-            .should_receive('this_boot')
-            .once())
         (flexmock(journal.Reader)
             .should_receive('get_next')
             .and_return({'__CURSOR': '1'})
@@ -106,9 +159,6 @@ class TestLatestJournalEntries(object):
             .with_args(last_cursor)
             .once())
         (flexmock(journal.Reader)
-            .should_receive('this_boot')
-            .never())
-        (flexmock(journal.Reader)
             .should_receive('get_next')
             .and_return(results[0])
             .and_return(results[1])
@@ -126,7 +176,7 @@ class TestLatestJournalEntries(object):
         with open(cursor_file, 'rt') as fp:
             assert fp.read() == final_cursor
 
-    def test_this_boot(self, tmpdir):
+    def test_no_seek_cursor(self, tmpdir):
         last_cursor = '2'
         final_cursor = '3'
         results = [{'__CURSOR': '1'},
@@ -136,9 +186,6 @@ class TestLatestJournalEntries(object):
         (flexmock(journal.Reader)
             .should_receive('seek_cursor')
             .never())
-        (flexmock(journal.Reader)
-            .should_receive('this_boot')
-            .once())
         (flexmock(journal.Reader)
             .should_receive('get_next')
             .and_return(results[0])
@@ -151,12 +198,12 @@ class TestLatestJournalEntries(object):
             fp.write(last_cursor)
 
         with LatestJournalEntries(cursor_file=cursor_file,
-                                  this_boot=True) as entries:
+                                  seek_cursor=False) as entries:
             e = list(entries)
 
         assert e == results
         with open(cursor_file, 'rt') as fp:
-            fp.read() == final_cursor
+            assert fp.read() == final_cursor
 
 
 class TestEntryFormatter(object):

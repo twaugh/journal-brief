@@ -18,7 +18,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
 from collections.abc import Iterator
 import errno
-from journal_brief.constants import CONFIG_DIR
+from journal_brief.constants import CONFIG_DIR, PRIORITY_MAP
 from logging import getLogger
 import os
 from systemd import journal
@@ -28,15 +28,56 @@ log = getLogger(__name__)
 
 
 class SelectiveReader(journal.Reader):
-    def __init__(self, inclusions=None):
+    """
+    A Reader instance with matches applied
+    """
+
+    def __init__(self, log_level=None, this_boot=None, inclusions=None):
         super(SelectiveReader, self).__init__()
+
         if inclusions:
+            assert isinstance(inclusions, list)
             for inclusion in inclusions:
+                assert isinstance(inclusion, dict)
                 for field, matches in inclusion.items():
+                    if field == 'PRIORITY':
+                        try:
+                            this_log_level = PRIORITY_MAP[matches]
+                        except (AttributeError, TypeError):
+                            pass
+                        else:
+                            # These are equivalent:
+                            # - PRIORITY: 3
+                            # - PRIORITY: err
+                            # - PRIORITY: [0, 1, 2, 3]
+                            # - PRIORITY: [emerg, alert, crit, err]
+                            this_log_level = PRIORITY_MAP[matches]
+                            self.log_level(int(this_log_level))
+                            continue
+
+                    assert isinstance(matches, list)
                     for match in matches:
-                        self.add_match("{0}={1}".format(field, match))
+                        if field == 'PRIORITY':
+                            try:
+                                match = PRIORITY_MAP[match]
+                            except (AttributeError, TypeError):
+                                pass
+
+                        self.add_match(**{str(field): str(match)})
+
+                if this_boot:
+                    self.this_boot()
+
+                if log_level is not None:
+                    self.log_level(log_level)
 
                 self.add_disjunction()
+        else:
+            if this_boot:
+                self.this_boot()
+
+            if log_level is not None:
+                self.log_level(log_level)
 
 
 class LatestJournalEntries(Iterator):
@@ -44,16 +85,15 @@ class LatestJournalEntries(Iterator):
     Iterate over new journal entries since last time
     """
 
-    def __init__(self, cursor_file=None, log_level=None, reader=None,
-                 dry_run=False, this_boot=False):
+    def __init__(self, cursor_file=None, reader=None, dry_run=False,
+                 seek_cursor=True):
         """
         Constructor
 
         :param cursor_file: str, filename of cursor bookmark file
-        :param log_level: int, minimum log level
         :param reader: systemd.journal.Reader instance
         :param dry_run: bool, whether to update the cursor file
-        :param this_boot: bool, process all entries from current boot
+        :param seek_cursor: bool, whether to seek to bookmark first
         """
         super(LatestJournalEntries, self).__init__()
 
@@ -70,15 +110,10 @@ class LatestJournalEntries(Iterator):
         if reader is None:
             reader = journal.Reader()
 
-        if log_level is not None:
-            reader.log_level(log_level)
-
-        if self.cursor and not this_boot:
+        if seek_cursor and self.cursor:
             log.debug("Seeking to %s", self.cursor)
             reader.seek_cursor(self.cursor)
             reader.get_next()
-        else:
-            reader.this_boot()
 
         self.reader = reader
         self.dry_run = dry_run

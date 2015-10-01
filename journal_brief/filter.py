@@ -18,6 +18,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
 from collections.abc import Iterator
 from collections import namedtuple
+from journal_brief.constants import PRIORITY_MAP
 from logging import getLogger
 import os
 import re
@@ -39,7 +40,10 @@ class Exclusion(dict):
         # Make sure everything is interpreted as a string
         str_mapping = {}
         for field, matches in mapping.items():
-            str_mapping[field] = [str(match) for match in matches]
+            if field == 'PRIORITY':
+                str_mapping[field] = [PRIORITY_MAP[match] for match in matches]
+            else:
+                str_mapping[field] = [str(match) for match in matches]
 
         super(Exclusion, self).__init__(str_mapping)
         self.hits = 0

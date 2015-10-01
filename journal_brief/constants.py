@@ -17,6 +17,15 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 """
 
 import os
+from systemd import journal
 
 CONFIG_DIR = '{0}/.config/journal-brief'.format(os.path.expanduser('~'))
 PACKAGE = 'journal-brief'
+
+PRIORITY_MAP = {}
+for attr in dir(journal):
+    if attr.startswith('LOG_'):
+        value = getattr(journal, attr)
+        svalue = str(value)
+        for key in [value, svalue, attr[4:].lower()]:
+            PRIORITY_MAP[key] = svalue

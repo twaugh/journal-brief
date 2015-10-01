@@ -22,9 +22,9 @@ possible matches. All fields defined in an inclusion must match at
 least one of their possible match values for an entry to be included.
 
 For example, the configuration below matches all entries of priority 3
-or lower (like `journalctl -p err`), but also includes entries of
-priority 6 or lower from the specified systemd unit (like `journalctl
--p info -u myservice.service`):
+(err) or lower (like `journalctl -p err`), but also includes entries
+of priority 6 or lower from the specified systemd unit (like
+`journalctl -p info -u myservice.service`):
 
 ```yaml
 inclusions:
@@ -32,6 +32,18 @@ inclusions:
 - PRIORITY: [4, 5, 6]
   _SYSTEMD_UNIT: [myservice.service]
 ```
+
+The `priority` configuration parameter sets the log level to add to
+all inclusions, and if the PRIORITY field match is not a list it is
+matched as a maximum value so the above could be written as:
+
+```yaml
+priority: err
+inclusions:
+- PRIORITY: info
+  _SYSTEMD_UNIT: [myservice.service]
+```
+
 
 ### Exclusions
 

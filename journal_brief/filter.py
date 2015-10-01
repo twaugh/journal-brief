@@ -18,12 +18,9 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
 from collections.abc import Iterator
 from collections import namedtuple
-from journal_brief.config import Config
 from logging import getLogger
 import os
 import re
-from systemd import journal
-import yaml
 
 
 log = getLogger(__name__)

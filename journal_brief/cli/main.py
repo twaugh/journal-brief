@@ -26,8 +26,8 @@ from journal_brief import (SelectiveReader,
                            LatestJournalEntries,
                            EntryFormatter,
                            JournalFilter)
-from journal_brief.filter import Config
 from journal_brief.constants import PACKAGE, CONFIG_DIR
+from journal_brief.config import Config
 
 
 class InstanceConfig(object):

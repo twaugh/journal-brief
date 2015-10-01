@@ -18,7 +18,6 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
 from datetime import datetime, timezone, timedelta
 from flexmock import flexmock
-import functools
 from inspect import getsourcefile
 import journal_brief
 from journal_brief import SelectiveReader, LatestJournalEntries, EntryFormatter
@@ -26,21 +25,7 @@ from systemd import journal
 import os
 import pytest
 import re
-
-
-class Watcher(object):
-    def __init__(self):
-        self.calls = []
-
-    @property
-    def calls_args_only(self):
-        return [call[:-1] for call in self.calls]
-
-    def watch_call(self, func):
-        return functools.partial(self.called, func)
-
-    def called(self, func, *args, **kwargs):
-        self.calls.append((func, args, kwargs))
+from tests.util import Watcher
 
 
 class TestSelectiveReader(object):

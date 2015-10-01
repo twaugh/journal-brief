@@ -16,7 +16,11 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 ## Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 """
 
+import datetime
+import json
 import logging
+from systemd import journal
+import uuid
 
 
 log = logging.getLogger(__name__)
@@ -99,3 +103,37 @@ class ShortEntryFormatter(EntryFormatter, ReadableTimestampMixIn):
             entry['SYSLOG_IDENTIFIER'] += '[{0}]'.format(entry['SYSLOG_PID'])
 
         return self.FORMAT.format(**entry)
+
+
+class JSONEntryFormatter(EntryFormatter):
+    NAME='json'
+    JSON_DUMPS_KWARGS={}
+
+    def format(self, entry):
+        serializable = {}
+        for field, value in entry.items():
+            if isinstance(value, uuid.UUID):
+                log.debug("Converting %s", field)
+                value = str(value)
+            elif isinstance(value, datetime.timedelta):
+                log.debug("Converting %s", field)
+                value = value.total_seconds()
+            elif isinstance(value, datetime.datetime):
+                log.debug("Converting %s", field)
+                value = value.strftime("%c")
+            elif isinstance(value, journal.Monotonic):
+                log.debug("Converting %s", field)
+                value = value.timestamp.total_seconds()
+            elif isinstance(value, bytes):
+                log.debug("Converting %s", field)
+                value = value.decode()
+
+            serializable[field] = value
+
+        log.debug("%r", serializable)
+        return json.dumps(serializable, **self.JSON_DUMPS_KWARGS)
+
+
+class JSONPrettyEntryFormatter(JSONEntryFormatter):
+    NAME='json-pretty'
+    JSON_DUMPS_KWARGS={'indent': 8}

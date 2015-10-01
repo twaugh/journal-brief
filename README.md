@@ -13,7 +13,27 @@ exec journal-brief -p err
 ## Configuration
 
 A YAML configuration in `~/.config/journal-brief/journal-brief.conf`
-defines which journal entries should be ignored.
+defines which journal entries should be shown.
+
+### Inclusions
+
+Each inclusion is defined by a list of journal fields and their
+possible matches. All fields defined in an inclusion must match at
+least one of their possible match values for an entry to be included.
+
+For example, the configuration below matches all entries of priority 3
+or lower (like `journalctl -p err`), but also includes entries of
+priority 6 or lower from the specified systemd unit (like `journalctl
+-p info -u myservice.service`):
+
+```yaml
+inclusions:
+- PRIORITY: [0, 1, 2, 3]
+- PRIORITY: [4, 5, 6]
+  _SYSTEMD_UNIT: [myservice.service]
+```
+
+### Exclusions
 
 Each exclusion is defined by a list of journal fields and their
 possible matches. All fields in an exclusion must match at least one

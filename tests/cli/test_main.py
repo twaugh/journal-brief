@@ -22,7 +22,6 @@ from journal_brief.cli.main import CLI
 from journal_brief.filter import JournalFilter
 import logging
 import os
-import pytest
 from systemd import journal
 from tempfile import NamedTemporaryFile
 from tests.util import Watcher
@@ -155,7 +154,6 @@ exclusions:
         assert not err
         assert 'message' in out
 
-    @pytest.mark.xfail
     def test_inclusions_yaml(self):
         (flexmock(journal.Reader)
             .should_receive('get_next')

@@ -105,7 +105,7 @@ class CLI(object):
             log_level = getattr(journal, attr)
 
         formatter = EntryFormatter()
-        reader = SelectiveReader()
+        reader = SelectiveReader(inclusions=self.config.get('inclusions'))
         with LatestJournalEntries(cursor_file=cursor_file,
                                   log_level=log_level,
                                   reader=reader,

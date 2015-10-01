@@ -22,8 +22,10 @@ from journal_brief.cli.main import CLI
 from journal_brief.filter import JournalFilter
 import logging
 import os
+import pytest
 from systemd import journal
 from tempfile import NamedTemporaryFile
+from tests.util import Watcher
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -152,3 +154,58 @@ exclusions:
         (out, err) = capsys.readouterr()
         assert not err
         assert 'message' in out
+
+    @pytest.mark.xfail
+    def test_inclusions_yaml(self):
+        (flexmock(journal.Reader)
+            .should_receive('get_next')
+            .and_return({}))
+        watcher = Watcher()
+        (flexmock(journal.Reader)
+            .should_receive('add_match')
+            .replace_with(watcher.watch_call('add_match')))
+        (flexmock(journal.Reader)
+            .should_receive('add_conjunction')
+            .replace_with(watcher.watch_call('add_conjunction')))
+        (flexmock(journal.Reader)
+            .should_receive('add_disjunction')
+            .replace_with(watcher.watch_call('add_disjunction')))
+
+        with NamedTemporaryFile(mode='rt') as cursorfile:
+            with NamedTemporaryFile(mode='wt') as configfile:
+                configfile.write("""
+cursor-file: {cursor}
+inclusions:
+- PRIORITY: [0, 1, 2, 3]
+- PRIORITY: [4, 5, 6]
+  _SYSTEMD_UNIT: [myservice.service]
+""".format(cursor=cursorfile.name))
+                configfile.flush()
+                cli = CLI(args=['--conf', configfile.name])
+                cli.run()
+
+        # Should add matches for all of the first group
+        assert set(watcher.calls_args_only[:4]) == set([
+            ('add_match', ('PRIORITY=0',)),
+            ('add_match', ('PRIORITY=1',)),
+            ('add_match', ('PRIORITY=2',)),
+            ('add_match', ('PRIORITY=3',)),
+        ])
+
+        # Then a disjunction
+        assert watcher.calls[4] == ('add_disjunction', (), {})
+
+        # Then matches for all of the second group
+        assert set(watcher.calls_args_only[5:9]) == set([
+            ('add_match', ('PRIORITY=4',)),
+            ('add_match', ('PRIORITY=5',)),
+            ('add_match', ('PRIORITY=6',)),
+            ('add_match', ('_SYSTEMD_UNIT=myservice.service',)),
+        ])
+
+        # Another disjuction
+        assert watcher.calls[9] == ('add_disjunction', (), {})
+
+        # Finally, this_boot() would be called, adding another match
+        assert watcher.calls[10][:2] == ('add_match', ())
+        assert list(watcher.calls[10][2].keys()) == ['_BOOT_ID']

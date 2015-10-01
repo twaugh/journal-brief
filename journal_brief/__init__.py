@@ -22,4 +22,4 @@ from journal_brief.journal_brief import (SelectiveReader,
 from journal_brief.filter import JournalFilter
 from journal_brief.config import Config
 
-__version__ = '0.0.4'  # also update setup.py
+__version__ = '0.0.5'  # also update setup.py

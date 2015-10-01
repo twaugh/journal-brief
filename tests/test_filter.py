@@ -20,7 +20,6 @@ from flexmock import flexmock
 from journal_brief import JournalFilter
 from journal_brief.filter import Exclusion
 import logging
-import pytest
 from systemd import journal
 
 

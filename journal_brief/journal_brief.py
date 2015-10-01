@@ -30,6 +30,13 @@ log = getLogger(__name__)
 class SelectiveReader(journal.Reader):
     def __init__(self, inclusions=None):
         super(SelectiveReader, self).__init__()
+        if inclusions:
+            for inclusion in inclusions:
+                for field, matches in inclusion.items():
+                    for match in matches:
+                        self.add_match("{0}={1}".format(field, match))
+
+                self.add_disjunction()
 
 
 class LatestJournalEntries(Iterator):

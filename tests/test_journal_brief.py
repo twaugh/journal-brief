@@ -44,7 +44,6 @@ class Watcher(object):
 
 
 class TestSelectiveReader(object):
-    @pytest.mark.xfail
     def test_inclusions(self):
         (flexmock(journal.Reader)
             .should_receive('get_next')

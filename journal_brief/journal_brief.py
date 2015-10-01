@@ -40,6 +40,8 @@ class LatestJournalEntries(Iterator):
         :param cursor_file: str, filename of cursor bookmark file
         :param log_level: int, minimum log level
         :param reader: systemd.journal.Reader instance
+        :param dry_run: bool, whether to update the cursor file
+        :param this_boot: bool, process all entries from current boot
         """
         super(LatestJournalEntries, self).__init__()
 

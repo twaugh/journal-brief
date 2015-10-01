@@ -35,6 +35,7 @@ class SelectiveReader(journal.Reader):
     def __init__(self, log_level=None, this_boot=None, inclusions=None):
         super(SelectiveReader, self).__init__()
 
+        log.debug("setting inclusion filters:")
         if inclusions:
             assert isinstance(inclusions, list)
             for inclusion in inclusions:
@@ -42,7 +43,7 @@ class SelectiveReader(journal.Reader):
                 for field, matches in inclusion.items():
                     if field == 'PRIORITY':
                         try:
-                            this_log_level = PRIORITY_MAP[matches]
+                            this_log_level = int(PRIORITY_MAP[matches])
                         except (AttributeError, TypeError):
                             pass
                         else:
@@ -51,8 +52,8 @@ class SelectiveReader(journal.Reader):
                             # - PRIORITY: err
                             # - PRIORITY: [0, 1, 2, 3]
                             # - PRIORITY: [emerg, alert, crit, err]
-                            this_log_level = PRIORITY_MAP[matches]
-                            self.log_level(int(this_log_level))
+                            log.debug("log_level(%r)", this_log_level)
+                            self.log_level(this_log_level)
                             continue
 
                     assert isinstance(matches, list)
@@ -63,21 +64,29 @@ class SelectiveReader(journal.Reader):
                             except (AttributeError, TypeError):
                                 pass
 
+                        log.debug("%s=%s", field, match)
                         self.add_match(**{str(field): str(match)})
 
                 if this_boot:
+                    log.debug("this_boot()")
                     self.this_boot()
 
                 if log_level is not None:
+                    log.debug("log_level(%r)", log_level)
                     self.log_level(log_level)
 
+                log.debug("-or-")
                 self.add_disjunction()
         else:
             if this_boot:
+                log.debug("this_boot()")
                 self.this_boot()
 
             if log_level is not None:
+                log.debug("log_level(%r)", log_level)
                 self.log_level(log_level)
+
+        log.debug("no more inclusion filters")
 
 
 class LatestJournalEntries(Iterator):

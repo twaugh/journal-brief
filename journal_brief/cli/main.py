@@ -30,6 +30,9 @@ from journal_brief.config import Config
 from journal_brief.constants import PACKAGE, CONFIG_DIR, PRIORITY_MAP
 
 
+log = logging.getLogger('cli')
+
+
 class InstanceConfig(object):
     def __init__(self, config, args):
         self.config = config
@@ -37,13 +40,17 @@ class InstanceConfig(object):
 
     def get(self, key, default_value=None):
         config_key = key.replace('_', '-')
+        args_key = key.replace('-', '_')
         try:
-            value = getattr(self.args, key)
+            value = getattr(self.args, args_key)
+            log.debug("%s=%r from args", args_key, value)
         except AttributeError:
             value = None
         finally:
             if value is None:
                 value = self.config.get(config_key, default_value)
+                if value is not None:
+                    log.debug("%s=%r from config", args_key, value)
 
         return value
 
@@ -65,6 +72,8 @@ class CLI(object):
                                      'warning', 'notice', 'info', 'debug'])
         parser.add_argument('--conf', metavar='FILE',
                             help='use FILE as config file')
+        parser.add_argument('--debug', action='store_true', default=False,
+                            help='enable debugging')
         parser.add_argument('--dry-run', action='store_true', default=False,
                             help='do not update cursor bookmark file')
 
@@ -74,23 +83,26 @@ class CLI(object):
         return parser.parse_args(args)
 
     def show_stats(self, entries, exclusions):
-        logging.debug('exclusions: %r', exclusions)
         jfilter = JournalFilter(entries, exclusions=exclusions)
         list(jfilter)
         stats = jfilter.get_statistics()
-        logging.debug("stats: %r", stats)
+        log.debug("stats: %r", stats)
         strf = "{FREQ:>10}  {EXCLUSION}"
         print(strf.format(FREQ='FREQUENCY', EXCLUSION='EXCLUSION'))
         for stat in stats:
             print(strf.format(FREQ=stat.hits, EXCLUSION=repr(stat.exclusion)))
 
     def run(self):
-        cursor_file = self.config.get('cursor_file')
+        if self.config.get('debug'):
+            logging.basicConfig(level=logging.DEBUG)
+
+        cursor_file = self.config.get('cursor-file')
         if not cursor_file.startswith('/'):
             cursor_file = os.path.join(CONFIG_DIR, cursor_file)
 
+        log.debug("cursor-file=%r", cursor_file)
         if self.args.cmd == 'reset':
-            logging.debug('reset: removing %r', cursor_file)
+            log.debug('reset: removing %r', cursor_file)
             try:
                 os.unlink(cursor_file)
             except IOError:
@@ -102,6 +114,7 @@ class CLI(object):
         priority = self.config.get('priority')
         if priority:
             log_level = int(PRIORITY_MAP[priority])
+            log.debug("priority=%r from args/config", log_level)
 
         formatter = EntryFormatter()
         reader = SelectiveReader(this_boot=self.args.b,

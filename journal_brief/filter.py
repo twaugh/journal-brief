@@ -39,11 +39,14 @@ class Exclusion(dict):
 
         # Make sure everything is interpreted as a string
         str_mapping = {}
+        log.debug("new exclusion rule:")
         for field, matches in mapping.items():
             if field == 'PRIORITY':
                 str_mapping[field] = [PRIORITY_MAP[match] for match in matches]
             else:
                 str_mapping[field] = [str(match) for match in matches]
+
+            log.debug("%s=%r", field, str_mapping[field])
 
         super(Exclusion, self).__init__(str_mapping)
         self.hits = 0
@@ -51,9 +54,10 @@ class Exclusion(dict):
 
     def value_matches(self, field, index, match, value):
         try:
-            log.debug('using cached regexp for %s[%d]:%s',
-                      field, index, match)
             regexp = self.regexp[field][index]
+            if regexp is not None:
+                log.debug('using cached regexp for %s[%d]:%s',
+                          field, index, match)
         except KeyError:
             if match.startswith('/') and match.endswith('/'):
                 pattern = match[1:-1]
@@ -77,11 +81,13 @@ class Exclusion(dict):
             for index, match in enumerate(matches):
                 if self.value_matches(field, index, match, entry.get(field)):
                     is_match = True
+                    log.debug("matched %s[%d]", field, index)
                     break
 
             if not is_match:
                 return False
 
+        log.debug("excluding entry")
         self.hits += 1
         return True
 

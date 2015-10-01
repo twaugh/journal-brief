@@ -16,7 +16,8 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 ## Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 """
 
-from journal_brief.journal_brief import (LatestJournalEntries,
+from journal_brief.journal_brief import (SelectiveReader,
+                                         LatestJournalEntries,
                                          EntryFormatter)
 from journal_brief.filter import JournalFilter
 from journal_brief.config import Config

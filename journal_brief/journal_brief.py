@@ -27,6 +27,11 @@ from systemd import journal
 log = getLogger(__name__)
 
 
+class SelectiveReader(journal.Reader):
+    def __init__(self, inclusions=None):
+        super(SelectiveReader, self).__init__()
+
+
 class LatestJournalEntries(Iterator):
     """
     Iterate over new journal entries since last time

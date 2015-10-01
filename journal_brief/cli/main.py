@@ -22,7 +22,10 @@ import os
 import sys
 from systemd import journal
 
-from journal_brief import LatestJournalEntries, EntryFormatter, JournalFilter
+from journal_brief import (SelectiveReader,
+                           LatestJournalEntries,
+                           EntryFormatter,
+                           JournalFilter)
 from journal_brief.filter import Config
 from journal_brief.constants import PACKAGE, CONFIG_DIR
 
@@ -102,8 +105,10 @@ class CLI(object):
             log_level = getattr(journal, attr)
 
         formatter = EntryFormatter()
+        reader = SelectiveReader()
         with LatestJournalEntries(cursor_file=cursor_file,
                                   log_level=log_level,
+                                  reader=reader,
                                   dry_run=self.args.dry_run,
                                   this_boot=self.args.b) as entries:
             exclusions = self.config.get('exclusions', [])

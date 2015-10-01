@@ -18,13 +18,74 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
 from datetime import datetime, timezone, timedelta
 from flexmock import flexmock
+import functools
 from inspect import getsourcefile
 import journal_brief
-from journal_brief import LatestJournalEntries, EntryFormatter
+from journal_brief import SelectiveReader, LatestJournalEntries, EntryFormatter
 from systemd import journal
 import os
 import pytest
 import re
+
+
+class Watcher(object):
+    def __init__(self):
+        self.calls = []
+
+    @property
+    def calls_args_only(self):
+        return [call[:-1] for call in self.calls]
+
+    def watch_call(self, func):
+        return functools.partial(self.called, func)
+
+    def called(self, func, *args, **kwargs):
+        self.calls.append((func, args, kwargs))
+
+
+class TestSelectiveReader(object):
+    @pytest.mark.xfail
+    def test_inclusions(self):
+        (flexmock(journal.Reader)
+            .should_receive('get_next')
+            .and_return({}))
+        watcher = Watcher()
+        (flexmock(journal.Reader)
+            .should_receive('add_match')
+            .replace_with(watcher.watch_call('add_match')))
+        (flexmock(journal.Reader)
+            .should_receive('add_conjunction')
+            .replace_with(watcher.watch_call('add_conjunction')))
+        (flexmock(journal.Reader)
+            .should_receive('add_disjunction')
+            .replace_with(watcher.watch_call('add_disjunction')))
+
+        inclusions = [{'PRIORITY': ['0', '1', '2', '3']},
+                      {'PRIORITY': ['4', '5', '6'],
+                       '_SYSTEMD_UNIT': ['myservice.service']}]
+        reader = SelectiveReader(inclusions=inclusions)
+
+        # Should add matches for all of the first group
+        assert set(watcher.calls_args_only[:4]) == set([
+            ('add_match', ('PRIORITY=0',)),
+            ('add_match', ('PRIORITY=1',)),
+            ('add_match', ('PRIORITY=2',)),
+            ('add_match', ('PRIORITY=3',)),
+        ])
+
+        # Then a disjunction
+        assert watcher.calls[4] == ('add_disjunction', (), {})
+
+        # Then matches for all of the second group
+        assert set(watcher.calls_args_only[5:9]) == set([
+            ('add_match', ('PRIORITY=4',)),
+            ('add_match', ('PRIORITY=5',)),
+            ('add_match', ('PRIORITY=6',)),
+            ('add_match', ('_SYSTEMD_UNIT=myservice.service',)),
+        ])
+
+        # And a final disjunction
+        assert watcher.calls[9] == ('add_disjunction', (), {})
 
 
 class TestLatestJournalEntries(object):

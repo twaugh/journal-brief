@@ -48,7 +48,6 @@ inclusions:
   _SYSTEMD_UNIT: [myservice.service]
 ```
 
-
 ### Exclusions
 
 Each exclusion is defined by a list of journal fields and their
@@ -81,6 +80,19 @@ match string.
 
 The available journal fields are described in the
 systemd.journal-fields(7) manual page.
+
+#### Test exclusion rules
+
+You can run `journal-brief --dry-run -b stats` to see how many times
+each exclusion rule has excluded messages, based on all messages from
+the current boot. The `--dry-run` parameter skips updating the
+bookmark, so you can edit the exclusion rules and try again, comparing
+output.
+
+#### Automatically create exclusion rules
+
+To create exclusion rules, rather than showing journal entries, run
+`journal-brief --dry-run debrief`.
 
 ## Install
 

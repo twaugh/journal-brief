@@ -29,6 +29,7 @@ from journal_brief import (SelectiveReader,
                            JournalFilter)
 from journal_brief.config import Config
 from journal_brief.constants import PACKAGE, CONFIG_DIR, PRIORITY_MAP
+from journal_brief.debrief import Debriefer
 
 
 log = logging.getLogger('cli')
@@ -82,6 +83,9 @@ class CLI(object):
                             choices=list_formatters())
 
         cmds = parser.add_subparsers(dest='cmd')
+        debrief = cmds.add_parser('debrief', help='construct exclusions list')
+        debrief.add_argument('--ignore', metavar='FIELD', nargs='+',
+                             help='fields to ignore')
         cmds.add_parser('reset', help='reset cursor bookmark and exit')
         cmds.add_parser('stats', help='show statistics')
         return parser.parse_args(args)
@@ -95,6 +99,15 @@ class CLI(object):
         print(strf.format(FREQ='FREQUENCY', EXCLUSION='EXCLUSION'))
         for stat in stats:
             print(strf.format(FREQ=stat.hits, EXCLUSION=repr(stat.exclusion)))
+
+    def debrief(self, jfilter):
+        dbr = Debriefer(jfilter, ignore_fields=self.args.ignore)
+        exclusions = dbr.get_exclusions()
+        print("exclusions:")
+        for exclusion in exclusions:
+            as_yaml = str(exclusion).split('\n')
+            indented = ['  ' + line + '\n' for line in as_yaml if line]
+            sys.stdout.write(''.join(indented))
 
     def run(self):
         if self.config.get('debug'):
@@ -130,10 +143,13 @@ class CLI(object):
                                   dry_run=self.args.dry_run,
                                   seek_cursor=not self.args.b) as entries:
             exclusions = self.config.get('exclusions', [])
-            if self.args.cmd == 'stats':
+            jfilter = JournalFilter(entries, exclusions=exclusions)
+            if self.args.cmd == 'debrief':
+                self.debrief(jfilter)
+            elif self.args.cmd == 'stats':
                 self.show_stats(entries, exclusions)
             else:
-                for entry in JournalFilter(entries, exclusions=exclusions):
+                for entry in jfilter:
                     print(formatter.format(entry))
 
 

@@ -147,6 +147,56 @@ exclusions:
                                  "         1  {'MESSAGE': ['exclude']}",
                                  ""])
 
+    def test_debrief(self, capsys):
+        entries = [
+            {'__CURSOR': '1',
+             'MESSAGE': 'message 1',
+             'KEY': 'multiple',
+             '__REALTIME_TIMESTAMP': datetime.now()},
+            {'__CURSOR': '2',
+             'MESSAGE': 'message 1',
+             'KEY': 'multiple',
+             '__REALTIME_TIMESTAMP': datetime.now()},
+            {'__CURSOR': '3',
+             'MESSAGE': 'message 1',
+             '__REALTIME_TIMESTAMP': datetime.now()},
+            {'__CURSOR': '4',
+             'MESSAGE': 'message 1',
+             '__REALTIME_TIMESTAMP': datetime.now()},
+            {'__CURSOR': '5',
+             'MESSAGE': 'message 2',
+             'KEY': 'multiple',
+             '__REALTIME_TIMESTAMP': datetime.now()},
+            {'__CURSOR': '6',
+             'MESSAGE': 'message 2',
+             'KEY': 'single',
+             '__REALTIME_TIMESTAMP': datetime.now()},
+        ]
+        expectation =(flexmock(journal.Reader).should_receive('get_next'))
+        for entry in entries:
+            expectation = expectation.and_return(entry)
+
+        expectation.and_return({})
+
+        with NamedTemporaryFile(mode='rt') as cursorfile:
+            with NamedTemporaryFile(mode='wt') as configfile:
+                configfile.write("cursor-file: {0}".format(cursorfile.name))
+                configfile.flush()
+                cli = CLI(args=['--conf', configfile.name, 'debrief'])
+                cli.run()
+
+        (out, err) = capsys.readouterr()
+        assert not err
+        assert out == "\n".join([
+            "exclusions:",
+            "  # 4 occurrences (out of 6)",
+            "  - MESSAGE:",
+            "    - message 1",
+            "  # 2 occurrences (out of 2)",
+            "  - MESSAGE:",
+            "    - message 2",
+            ''])
+
     def test_exclusions_yaml(self, capsys):
         (flexmock(journal.Reader)
             .should_receive('get_next')

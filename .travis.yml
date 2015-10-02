@@ -6,3 +6,5 @@ install:
   - pip install flexmock
 script: py.test -vv tests
 sudo: false
+notifications:
+  email: false

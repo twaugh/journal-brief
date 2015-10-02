@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/twaugh/journal-brief.svg?branch=master)](https://travis-ci.org/twaugh/journal-brief) 
+
 # journal-brief
 Show new systemd journal entries since last run.
 

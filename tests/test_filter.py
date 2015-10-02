@@ -18,10 +18,12 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
 import tests.util
 from flexmock import flexmock
+from io import StringIO
 from journal_brief import JournalFilter
 from journal_brief.filter import Exclusion
 import logging
 from systemd import journal
+import yaml
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -52,6 +54,24 @@ class TestExclusion(object):
         assert not exclusion.matches({'MESSAGE': 'exclude this',
                                       'SYSLOG_IDENTIFIER': 'at your peril',
                                       'IGNORE': 'ignore this'})
+
+    def test_str_without_comment(self):
+        excl = {'MESSAGE': ['exclude this']}
+        unyaml = StringIO()
+        excl_str = str(Exclusion(excl))
+        assert '#' not in excl_str
+        unyaml.write(excl_str)
+        unyaml.seek(0)
+        assert yaml.load(unyaml) == [excl]
+
+    def test_str_with_comment(self):
+        excl = {'MESSAGE': ['exclude this']}
+        unyaml = StringIO()
+        excl_str = str(Exclusion(excl, comment='comment'))
+        assert excl_str.startswith('# comment\n')
+        unyaml.write(excl_str)
+        unyaml.seek(0)
+        assert yaml.load(unyaml) == [excl]
 
 
 class TestJournalFilter(object):

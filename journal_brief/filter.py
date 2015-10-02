@@ -22,19 +22,19 @@ from journal_brief.constants import PRIORITY_MAP
 from logging import getLogger
 import os
 import re
+import yaml
 
 
 log = getLogger(__name__)
 ExclusionStatistics = namedtuple('ExclusionStatistics', ['hits', 'exclusion'])
 
 
-# dict, field -> list of values
 class Exclusion(dict):
     """
     str (field) -> list (str values)
     """
 
-    def __init__(self, mapping):
+    def __init__(self, mapping, comment=None):
         assert isinstance(mapping, dict)
 
         # Make sure everything is interpreted as a string
@@ -51,6 +51,17 @@ class Exclusion(dict):
         super(Exclusion, self).__init__(str_mapping)
         self.hits = 0
         self.regexp = {}  # field -> index -> compiled regexp
+        self.comment = comment
+
+    def __str__(self):
+        ret = ''
+        if self.comment:
+            ret += '# {0}\n'.format(self.comment)
+
+        ret += yaml.dump([dict(self)],
+                         indent=2,
+                         default_flow_style=False)
+        return ret
 
     def value_matches(self, field, index, match, value):
         try:

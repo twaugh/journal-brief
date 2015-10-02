@@ -106,8 +106,8 @@ class ShortEntryFormatter(EntryFormatter, ReadableTimestampMixIn):
 
 
 class JSONEntryFormatter(EntryFormatter):
-    NAME='json'
-    JSON_DUMPS_KWARGS={}
+    NAME = 'json'
+    JSON_DUMPS_KWARGS = {}
 
     def format(self, entry):
         serializable = {}
@@ -135,5 +135,5 @@ class JSONEntryFormatter(EntryFormatter):
 
 
 class JSONPrettyEntryFormatter(JSONEntryFormatter):
-    NAME='json-pretty'
-    JSON_DUMPS_KWARGS={'indent': 8}
+    NAME = 'json-pretty'
+    JSON_DUMPS_KWARGS = {'indent': 8}

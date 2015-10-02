@@ -16,6 +16,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 ## Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 """
 
+import tests.util
 from flexmock import flexmock
 from journal_brief import JournalFilter
 from journal_brief.filter import Exclusion

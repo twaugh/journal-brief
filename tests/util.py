@@ -17,6 +17,20 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 """
 
 import functools
+from inspect import getsourcefile
+import os
+import sys
+
+
+def mock_systemd():
+    import tests.missing
+    mock_path = getsourcefile(tests.missing)
+    sys.path.append(os.path.dirname(mock_path))
+
+try:
+    from systemd import journal
+except ImportError:
+    mock_systemd()
 
 
 class Watcher(object):

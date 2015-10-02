@@ -18,13 +18,13 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
 from datetime import datetime
 from flexmock import flexmock
+from tests.util import Watcher
 from journal_brief.cli.main import CLI
 from journal_brief.filter import JournalFilter
 import logging
 import os
 from systemd import journal
 from tempfile import NamedTemporaryFile
-from tests.util import Watcher
 
 
 logging.basicConfig(level=logging.DEBUG)

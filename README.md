@@ -1,5 +1,6 @@
 [![Code Health](https://landscape.io/github/twaugh/journal-brief/master/landscape.svg?style=flat)](https://landscape.io/github/twaugh/journal-brief/master)
 [![Build Status](https://travis-ci.org/twaugh/journal-brief.svg?branch=master)](https://travis-ci.org/twaugh/journal-brief) 
+[![Coverage Status](https://coveralls.io/repos/twaugh/journal-brief/badge.svg?branch=master&service=github)](https://coveralls.io/github/twaugh/journal-brief?branch=master)
 
 # journal-brief
 Show new systemd journal entries since last run.

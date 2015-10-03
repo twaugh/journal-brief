@@ -103,11 +103,14 @@ class CLI(object):
     def debrief(self, jfilter):
         dbr = Debriefer(jfilter, ignore_fields=self.args.ignore)
         exclusions = dbr.get_exclusions()
-        print("exclusions:")
+        exclusions_yaml = ''
         for exclusion in exclusions:
             as_yaml = str(exclusion).split('\n')
             indented = ['  ' + line + '\n' for line in as_yaml if line]
-            sys.stdout.write(''.join(indented))
+            exclusions_yaml += ''.join(indented)
+
+        if exclusions_yaml:
+            sys.stdout.write("exclusions:\n{0}".format(exclusions_yaml))
 
     def run(self):
         if self.config.get('debug'):

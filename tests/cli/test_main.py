@@ -172,7 +172,7 @@ exclusions:
              'KEY': 'single',
              '__REALTIME_TIMESTAMP': datetime.now()},
         ]
-        expectation =(flexmock(journal.Reader).should_receive('get_next'))
+        expectation = (flexmock(journal.Reader).should_receive('get_next'))
         for entry in entries:
             expectation = expectation.and_return(entry)
 
@@ -196,6 +196,25 @@ exclusions:
             "  - MESSAGE:",
             "    - message 2",
             ''])
+
+    def test_debrief_no_input(self, capsys):
+        """
+        Check it handles there being no input
+        """
+        (flexmock(journal.Reader)
+            .should_receive('get_next')
+            .and_return({}))
+
+        with NamedTemporaryFile(mode='rt') as cursorfile:
+            with NamedTemporaryFile(mode='wt') as configfile:
+                configfile.write("cursor-file: {0}".format(cursorfile.name))
+                configfile.flush()
+                cli = CLI(args=['--conf', configfile.name, 'debrief'])
+                cli.run()
+
+        (out, err) = capsys.readouterr()
+        assert not err
+        assert not out
 
     def test_exclusions_yaml(self, capsys):
         (flexmock(journal.Reader)

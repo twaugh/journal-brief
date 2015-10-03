@@ -32,9 +32,9 @@ of priority 6 or lower from the specified systemd unit (like
 
 ```yaml
 inclusions:
-- PRIORITY: [0, 1, 2, 3]
-- PRIORITY: [4, 5, 6]
-  _SYSTEMD_UNIT: [myservice.service]
+  - PRIORITY: [0, 1, 2, 3]
+  - PRIORITY: [4, 5, 6]
+    _SYSTEMD_UNIT: [myservice.service]
 ```
 
 The `priority` configuration parameter sets the log level to add to
@@ -44,8 +44,8 @@ matched as a maximum value so the above could be written as:
 ```yaml
 priority: err
 inclusions:
-- PRIORITY: info
-  _SYSTEMD_UNIT: [myservice.service]
+  - PRIORITY: info
+    _SYSTEMD_UNIT: [myservice.service]
 ```
 
 ### Exclusions
@@ -58,13 +58,13 @@ For example:
 
 ```yaml
 exclusions:
-- MESSAGE:
-  - exclude this
-  - exclude this too
-  SYSLOG_IDENTIFIER:
-  - from here
-- MESSAGE_ID: [c7a787079b354eaaa9e77b371893cd27]
-- MESSAGE: ["/Normal exit \(.*run\)/"]
+  - MESSAGE:
+      - exclude this
+      - exclude this too
+    SYSLOG_IDENTIFIER:
+      - from here
+  - MESSAGE_ID: [c7a787079b354eaaa9e77b371893cd27]
+  - MESSAGE: ["/Normal exit \(.*run\)/"]
 ```
 
 This would cause `journal-brief` to ignore journal entries that

@@ -66,10 +66,15 @@ class EntryCounter(object):
         '_HOSTNAME',
         '_SYSTEMD_OWNER_UID',
         '_UID',
+        '_AUDIT_LOGINUID',
         '_GID',
         '_CAP_EFFECTIVE',
         'PRIORITY',
         'SYSLOG_FACILITY',
+        '_AUDIT_SESSION',
+        '_SYSTEMD_SESSION',
+        '_SYSTEMD_CGROUP',
+        '_SYSTEMD_SLICE',
     }
 
     def __init__(self, reader, ignore_fields=None):
@@ -121,7 +126,15 @@ class Debriefer(object):
     Build exclusions list covering all entries.
     """
 
-    def __init__(self, reader, ignore_fields=None):
+    # One of these must be included in each rule
+    DEFINITIVE_FIELDS = {
+        'MESSAGE_ID',
+        'MESSAGE',
+        'CODE_FILE',
+        'CODE_FUNCTION',
+    }
+
+    def __init__(self, reader, ignore_fields=None, definitive_fields=None):
         """
         Constructor
 
@@ -131,6 +144,9 @@ class Debriefer(object):
 
         self.all_entries = list(reader)
         self.ignore_fields = set(ignore_fields or [])
+        self.definitive_fields = (definitive_fields or
+                                  self.DEFINITIVE_FIELDS.copy())
+
         self.exclusions = []
 
     def get_top(self, entries=None):
@@ -145,7 +161,8 @@ class Debriefer(object):
         ignore_fields = self.ignore_fields or set([])
         counter = EntryCounter(entries, ignore_fields=ignore_fields)
         counts = counter.get_counts()
-        top = counts.pop(0)
+        top = next(count for count in counts
+                   if count.field in self.definitive_fields)
         field = top.field
         value = top.entries[0][field]
         freq = len(top.entries)
@@ -186,7 +203,7 @@ class Debriefer(object):
         assert len(remaining) < len(entries)
         try:
             return self.get_top(remaining)
-        except IndexError:
+        except StopIteration:
             return top
 
     def get_exclusions(self):
@@ -195,5 +212,9 @@ class Debriefer(object):
 
         :return: list, Exclusion instances
         """
-        self.get_top()
-        return self.exclusions
+        try:
+            self.get_top()
+        except StopIteration:
+            pass
+        finally:
+            return self.exclusions

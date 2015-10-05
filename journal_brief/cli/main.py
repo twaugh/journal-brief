@@ -27,7 +27,7 @@ from journal_brief import (SelectiveReader,
                            get_formatter,
                            list_formatters,
                            JournalFilter)
-from journal_brief.config import Config
+from journal_brief.config import Config, ConfigError
 from journal_brief.constants import PACKAGE, CONFIG_DIR, PRIORITY_MAP
 from journal_brief.debrief import Debriefer
 
@@ -163,6 +163,8 @@ def run():
         pass
     except IOError as ex:
         sys.stderr.write("{0}: {1}\n".format(PACKAGE, os.strerror(ex.errno)))
+        sys.exit(1)
+    except ConfigError:
         sys.exit(1)
 
 

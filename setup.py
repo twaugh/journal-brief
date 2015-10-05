@@ -19,14 +19,35 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
 from setuptools import setup, find_packages
 
+
+long_description="""
+This can be run from cron to get a daily or hourly
+briefing of interesting new systemd journal entries.
+
+Inclusion and exclusion criteria define what an "interesting" journal
+entry is, and exclusion rules can be built automatically.
+""".strip()
+
 setup(
     name='journal-brief',
     version='0.0.6',  # also update journal_brief/__init__.py
-    description='Show new journal entries since last run',
+    description='Show interesting new systemd journal entries since last run',
+    long_description=long_description,
     author='Tim Waugh',
     author_email='tim@cyberelk.net',
     url='https://github.com/twaugh/journal-brief',
     license="GPLv2+",
+    classifiers=[
+        'Development Status :: 5 - Production/Stable',
+        'Environment :: Console',
+        'Intended Audience :: System Administrators',
+        'License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)',
+        'Operating System :: POSIX :: Linux',
+        'Programming Language :: Python :: 3 :: Only',
+        'Topic :: System :: Logging',
+        'Topic :: System :: Monitoring',
+    ],
+    keywords='systemd journal journalctl log monitor watch',
     entry_points={
         'console_scripts': ['journal-brief=journal_brief.cli.main:run'],
     },

@@ -78,9 +78,9 @@ class CLI(object):
                             help='enable debugging')
         parser.add_argument('--dry-run', action='store_true', default=False,
                             help='do not update cursor bookmark file')
-        parser.add_argument('-o', '--output', metavar='FORMAT',
-                            help='output format for journal entries',
-                            choices=list_formatters())
+        help = ('output format for journal entries, '
+                'comma-separated list from {0}'.format(list_formatters()))
+        parser.add_argument('-o', '--output', metavar='FORMAT', help=help)
 
         cmds = parser.add_subparsers(dest='cmd')
         debrief = cmds.add_parser('debrief', help='construct exclusions list')
@@ -99,6 +99,15 @@ class CLI(object):
         print(strf.format(FREQ='FREQUENCY', EXCLUSION='EXCLUSION'))
         for stat in stats:
             print(strf.format(FREQ=stat.hits, EXCLUSION=repr(stat.exclusion)))
+
+    def stream_output(self, stream, formatters, jfilter):
+        try:
+            for entry in jfilter:
+                for formatter in formatters:
+                    stream.write(formatter.format(entry))
+        finally:
+            for formatter in formatters:
+                stream.write(formatter.flush())
 
     def run(self):
         if self.config.get('debug'):
@@ -124,8 +133,6 @@ class CLI(object):
             log_level = int(PRIORITY_MAP[priority])
             log.debug("priority=%r from args/config", log_level)
 
-        output = self.config.get('output', 'short')
-        formatter = get_formatter(output)
         reader = SelectiveReader(this_boot=self.args.b,
                                  log_level=log_level,
                                  inclusions=self.config.get('inclusions'))
@@ -139,13 +146,12 @@ class CLI(object):
                 self.show_stats(entries, exclusions)
             else:
                 if self.args.cmd == 'debrief':
-                    formatter = Debriefer(ignore_fields=self.args.ignore)
+                    formatters = [Debriefer(ignore_fields=self.args.ignore)]
+                else:
+                    formats = self.config.get('output', 'short').split(',')
+                    formatters = [get_formatter(format) for format in formats]
 
-                try:
-                    for entry in jfilter:
-                        sys.stdout.write(formatter.format(entry))
-                finally:
-                    sys.stdout.write(formatter.flush())
+                self.stream_output(sys.stdout, formatters, jfilter)
 
 
 def run():

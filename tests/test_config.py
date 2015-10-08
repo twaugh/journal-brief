@@ -43,13 +43,12 @@ exclusions
             cfp.write(badyaml.strip())
             cfp.flush()
             with pytest.raises(ConfigError):
-                cfg = Config(config_file=cfp.name)
-
-            # Test the exception can be represented as a string
-            try:
-                cfg = Config(config_file=cfp.name)
-            except ConfigError as ex:
-                str(ex)
+                try:
+                    cfg = Config(config_file=cfp.name)
+                except ConfigError as ex:
+                    # Test the exception can be represented as a string
+                    str(ex)
+                    raise
 
     @pytest.mark.parametrize('badconfig', [
         "- not a map",
@@ -58,7 +57,6 @@ exclusions
         "debug: [1]",
         "debug: debug",
         "output: none",
-        "output: [json]",
         "priority: -1",
         "priority: [0, 1, 2, error, 2]",
 
@@ -74,13 +72,12 @@ debug: [1]
             cfp.write(badconfig.strip())
             cfp.flush()
             with pytest.raises(ConfigError):
-                cfg = Config(config_file=cfp.name)
-
-            # Test the exception can be represented as a string
-            try:
-                cfg = Config(config_file=cfp.name)
-            except ConfigError as ex:
-                str(ex)
+                try:
+                    cfg = Config(config_file=cfp.name)
+                except ConfigError as ex:
+                    # Test the exception can be represented as a string
+                    str(ex)
+                    raise
 
     @pytest.mark.parametrize('badconfig', [
         "{key}: 1",
@@ -142,10 +139,18 @@ exclusions:
             cfp.write(badconfig.strip())
             cfp.flush()
             with pytest.raises(ConfigError):
-                cfg = Config(config_file=cfp.name)
+                try:
+                    cfg = Config(config_file=cfp.name)
+                except ConfigError as ex:
+                    # Test the exception can be represented as a string
+                    str(ex)
+                    raise
 
-            # Test the exception can be represented as a string
-            try:
-                cfg = Config(config_file=cfp.name)
-            except ConfigError as ex:
-                str(ex)
+    @pytest.mark.parametrize('goodconfig', [
+        "output: [json-pretty, config]",
+    ])
+    def test_validation_good(self, goodconfig):
+        with NamedTemporaryFile(mode='wt') as cfp:
+            cfp.write(goodconfig.strip())
+            cfp.flush()
+            cfg = Config(config_file=cfp.name)

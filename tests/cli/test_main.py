@@ -48,6 +48,28 @@ class TestCLI(object):
                             '-p', 'debug'])
             assert cli.config.get('priority') == 'debug'
 
+    def test_normal_run(self, capsys):
+        (flexmock(journal.Reader)
+            .should_receive('get_next')
+            .and_return({'__CURSOR': '1',
+                         '__REALTIME_TIMESTAMP': datetime.now(),
+                         'MESSAGE': 'message1'})
+            .and_return({'__CURSOR': '2',
+                         '__REALTIME_TIMESTAMP': datetime.now(),
+                         'MESSAGE': 'message2'})
+            .and_return({}))
+
+        with NamedTemporaryFile(mode='wt') as configfile:
+            with NamedTemporaryFile(mode='rt') as cursorfile:
+                configfile.write('cursor-file: {0}\n'.format(cursorfile.name))
+                configfile.flush()
+                cli = CLI(args=['--conf', configfile.name])
+                cli.run()
+
+        (out, err) = capsys.readouterr()
+        assert not err
+        assert len(out.splitlines()) == 2
+
     def test_dry_run(self):
         (flexmock(journal.Reader)
             .should_receive('get_next')

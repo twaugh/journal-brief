@@ -180,10 +180,17 @@ class Config(dict):
             return
 
         formatters = list_formatters()
-        if self['output'] not in formatters:
-            yield SemanticError('invalid output format, must be in %s' %
-                              formatters, 'output',
-                              {'output': self['output']})
+        output = self['output']
+        if isinstance(output, list):
+            outputs = output
+        else:
+            outputs = [output]
+
+        for output in outputs:
+            if output not in formatters:
+                yield SemanticError('invalid output format, must be in %s' %
+                                    formatters, output,
+                                    {'output': self['output']})
 
     def validate_priority(self, valid_prios):
         if 'priority' not in self:

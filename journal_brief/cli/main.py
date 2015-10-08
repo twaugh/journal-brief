@@ -100,18 +100,6 @@ class CLI(object):
         for stat in stats:
             print(strf.format(FREQ=stat.hits, EXCLUSION=repr(stat.exclusion)))
 
-    def debrief(self, jfilter):
-        dbr = Debriefer(jfilter, ignore_fields=self.args.ignore)
-        exclusions = dbr.get_exclusions()
-        exclusions_yaml = ''
-        for exclusion in exclusions:
-            as_yaml = str(exclusion).split('\n')
-            indented = ['  ' + line + '\n' for line in as_yaml if line]
-            exclusions_yaml += ''.join(indented)
-
-        if exclusions_yaml:
-            sys.stdout.write("exclusions:\n{0}".format(exclusions_yaml))
-
     def run(self):
         if self.config.get('debug'):
             logging.basicConfig(level=logging.DEBUG)
@@ -147,11 +135,12 @@ class CLI(object):
                                   seek_cursor=not self.args.b) as entries:
             exclusions = self.config.get('exclusions', [])
             jfilter = JournalFilter(entries, exclusions=exclusions)
-            if self.args.cmd == 'debrief':
-                self.debrief(jfilter)
-            elif self.args.cmd == 'stats':
+            if self.args.cmd == 'stats':
                 self.show_stats(entries, exclusions)
             else:
+                if self.args.cmd == 'debrief':
+                    formatter = Debriefer(ignore_fields=self.args.ignore)
+
                 try:
                     for entry in jfilter:
                         sys.stdout.write(formatter.format(entry))

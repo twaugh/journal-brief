@@ -71,16 +71,21 @@ class TestDebriefer(object):
                    'KEY': 'multiple'},
                   {'MESSAGE': 'message 2',
                    'KEY': 'single'}]
-        dbr = Debriefer(reader)
-        exclusions = dbr.get_exclusions()
-        assert "".join(map(str, exclusions)) == '\n'.join([
-            "# 4 occurrences (out of 6)",
-            "- MESSAGE:",
-            "  - message 1",
-            "  MESSAGE1:",
-            "  - x",
-            "# 2 occurrences (out of 2)",
-            "- MESSAGE:",
-            "  - message 2",
+        dbr = Debriefer()
+        formatted = ''
+        for entry in reader:
+            formatted += dbr.format(entry)
+
+        formatted += dbr.flush()
+        assert formatted == '\n'.join([
+            "exclusions:",
+            "  # 4 occurrences (out of 6)",
+            "  - MESSAGE:",
+            "    - message 1",
+            "    MESSAGE1:",
+            "    - x",
+            "  # 2 occurrences (out of 2)",
+            "  - MESSAGE:",
+            "    - message 2",
             ''
         ])

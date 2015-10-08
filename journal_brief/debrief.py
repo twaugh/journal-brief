@@ -18,6 +18,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
 from collections import namedtuple
 from journal_brief.filter import Exclusion
+from journal_brief.format import EntryFormatter
 from logging import getLogger
 
 
@@ -121,10 +122,12 @@ class EntryCounter(object):
         return counts
 
 
-class Debriefer(object):
+class Debriefer(EntryFormatter):
     """
     Build exclusions list covering all entries.
     """
+
+    FORMAT_NAME = 'config'
 
     # One of these must be included in each rule
     DEFINITIVE_FIELDS = {
@@ -134,7 +137,7 @@ class Debriefer(object):
         'CODE_FUNCTION',
     }
 
-    def __init__(self, reader, ignore_fields=None, definitive_fields=None):
+    def __init__(self, ignore_fields=None, definitive_fields=None):
         """
         Constructor
 
@@ -142,11 +145,12 @@ class Debriefer(object):
         :param ignore_fields: sequence, field names to ignore
         """
 
-        self.all_entries = list(reader)
+        super(Debriefer, self).__init__()
         self.ignore_fields = set(ignore_fields or [])
         self.definitive_fields = (definitive_fields or
                                   self.DEFINITIVE_FIELDS.copy())
 
+        self.all_entries = []
         self.exclusions = []
 
     def get_top(self, entries=None):
@@ -218,3 +222,20 @@ class Debriefer(object):
             pass
         finally:
             return self.exclusions
+
+    def format(self, entry):
+        self.all_entries.append(entry)
+        return ''
+
+    def flush(self):
+        exclusions = self.get_exclusions()
+        exclusions_yaml = ''
+        for exclusion in exclusions:
+            as_yaml = str(exclusion).splitlines()
+            indented = ['  {0}\n'.format(line) for line in as_yaml if line]
+            exclusions_yaml += ''.join(indented)
+
+        if exclusions_yaml:
+            return "exclusions:\n{0}".format (exclusions_yaml)
+
+        return ''

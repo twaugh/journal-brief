@@ -152,8 +152,11 @@ class CLI(object):
             elif self.args.cmd == 'stats':
                 self.show_stats(entries, exclusions)
             else:
-                for entry in jfilter:
-                    print(formatter.format(entry))
+                try:
+                    for entry in jfilter:
+                        sys.stdout.write(formatter.format(entry))
+                finally:
+                    sys.stdout.write(formatter.flush())
 
 
 def run():

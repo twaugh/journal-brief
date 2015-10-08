@@ -36,34 +36,34 @@ class TestShortEntryFormatter(object):
 
     @pytest.mark.parametrize(('entry', 'expected'), [
         ({'MESSAGE': 'message'},
-         'localhost ?: message'),
+         'localhost ?: message\n'),
 
         ({'_HOSTNAME': 'host',
           'MESSAGE': 'message'},
-         'host ?: message'),
+         'host ?: message\n'),
 
         ({'_HOSTNAME': 'host',
           '_COMM': 'comm',
           'MESSAGE': 'message'},
-         'host comm: message'),
+         'host comm: message\n'),
 
         ({'_HOSTNAME': 'host',
           '_COMM': 'comm',
           '_PID': '1',
           'MESSAGE': 'message'},
-         'host comm[1]: message'),
+         'host comm[1]: message\n'),
 
         ({'_HOSTNAME': 'host',
           'SYSLOG_IDENTIFIER': 'syslogid',
           '_COMM': 'comm',
           'MESSAGE': 'message'},
-         'host syslogid: message'),
+         'host syslogid: message\n'),
 
         ({'_HOSTNAME': 'host',
           'SYSLOG_IDENTIFIER': 'syslogid',
           '_PID': '1',
           'MESSAGE': 'message'},
-         'host syslogid[1]: message'),
+         'host syslogid[1]: message\n'),
     ])
     def test_format(self, entry, expected):
         entry['__REALTIME_TIMESTAMP'] = datetime.fromtimestamp(0,

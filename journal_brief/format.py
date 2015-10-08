@@ -38,7 +38,45 @@ def get_formatter(name, *args, **kwargs):
     return FORMATTERS[name](*args, **kwargs)
 
 
-class ReadableTimestampMixIn(object):
+class RegisteredFormatter(type):
+    """
+    Metaclass for EntryFormatter, registering for use with get_formatter()
+    """
+    def __new__(meta, name, bases, class_dict):
+        cls = type.__new__(meta, name, bases, class_dict)
+        FORMATTERS[class_dict['FORMAT_NAME']] = cls
+        return cls
+
+
+class EntryFormatter(object, metaclass=RegisteredFormatter):
+    FORMAT_NAME = 'cat'  # for use with get_formatter()
+    def format(self, entry):
+        """
+        Format a single entry.
+
+        :param entry: dict, entry to format
+        :return: str, formatted entry including any newline required
+        """
+        return entry['MESSAGE'] + '\n'
+
+    def flush(self):
+        """
+        Return any closing formatting required.
+
+        This is called when there are no more
+        entries to format and can be used to
+        eg. display analysis of the logs.
+        """
+        return ''
+
+
+class ShortEntryFormatter(EntryFormatter):
+    """
+    Convert a journal entry into a string
+    """
+
+    FORMAT_NAME = 'short'
+    FORMAT = '{__REALTIME_TIMESTAMP} {_HOSTNAME} {SYSLOG_IDENTIFIER}: {MESSAGE}\n'
     TIMESTAMP_FORMAT = '%b %d %T'
 
     def format_timestamp(self, entry, field):
@@ -51,35 +89,6 @@ class ReadableTimestampMixIn(object):
         if field in entry:
             dt = entry[field]
             entry[field] = dt.strftime(self.TIMESTAMP_FORMAT)
-
-
-class RegisteredFormatter(type):
-    """
-    Metaclass for EntryFormatter, registering for use with get_formatter()
-    """
-    def __new__(meta, name, bases, class_dict):
-        cls = type.__new__(meta, name, bases, class_dict)
-        FORMATTERS[class_dict['NAME']] = cls
-        return cls
-
-
-class EntryFormatter(object, metaclass=RegisteredFormatter):
-    NAME = 'cat'  # for use with get_formatter()
-
-    def format(self, entry):
-        """
-        Return a formatted entry
-        """
-        return entry['MESSAGE']
-
-
-class ShortEntryFormatter(EntryFormatter, ReadableTimestampMixIn):
-    """
-    Convert a journal entry into a string
-    """
-
-    NAME = 'short'
-    FORMAT = '{__REALTIME_TIMESTAMP} {_HOSTNAME} {SYSLOG_IDENTIFIER}: {MESSAGE}'
 
     def format(self, entry):
         """
@@ -106,7 +115,7 @@ class ShortEntryFormatter(EntryFormatter, ReadableTimestampMixIn):
 
 
 class JSONEntryFormatter(EntryFormatter):
-    NAME = 'json'
+    FORMAT_NAME = 'json'
     JSON_DUMPS_KWARGS = {}
 
     def format(self, entry):
@@ -131,9 +140,9 @@ class JSONEntryFormatter(EntryFormatter):
             serializable[field] = value
 
         log.debug("%r", serializable)
-        return json.dumps(serializable, **self.JSON_DUMPS_KWARGS)
+        return json.dumps(serializable, **self.JSON_DUMPS_KWARGS) + '\n'
 
 
 class JSONPrettyEntryFormatter(JSONEntryFormatter):
-    NAME = 'json-pretty'
+    FORMAT_NAME = 'json-pretty'
     JSON_DUMPS_KWARGS = {'indent': 8}

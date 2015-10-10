@@ -83,9 +83,7 @@ class CLI(object):
         parser.add_argument('-o', '--output', metavar='FORMAT', help=help)
 
         cmds = parser.add_subparsers(dest='cmd')
-        debrief = cmds.add_parser('debrief', help='construct exclusions list')
-        debrief.add_argument('--ignore', metavar='FIELD', nargs='+',
-                             help='fields to ignore')
+        debrief = cmds.add_parser('debrief', help='create exclusions config')
         cmds.add_parser('reset', help='reset cursor bookmark and exit')
         cmds.add_parser('stats', help='show statistics')
         return parser.parse_args(args)
@@ -146,7 +144,7 @@ class CLI(object):
                 self.show_stats(entries, exclusions)
             else:
                 if self.args.cmd == 'debrief':
-                    formatters = [Debriefer(ignore_fields=self.args.ignore)]
+                    formatters = [get_formatter('config')]
                 else:
                     formats = self.config.get('output', 'short').split(',')
                     formatters = [get_formatter(format) for format in formats]

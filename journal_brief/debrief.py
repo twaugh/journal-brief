@@ -137,7 +137,7 @@ class Debriefer(EntryFormatter):
         'CODE_FUNCTION',
     }
 
-    def __init__(self, ignore_fields=None, definitive_fields=None):
+    def __init__(self):
         """
         Constructor
 
@@ -146,9 +146,6 @@ class Debriefer(EntryFormatter):
         """
 
         super(Debriefer, self).__init__()
-        self.ignore_fields = set(ignore_fields or [])
-        self.definitive_fields = (definitive_fields or
-                                  self.DEFINITIVE_FIELDS.copy())
 
         self.all_entries = []
         self.exclusions = []
@@ -162,11 +159,11 @@ class Debriefer(EntryFormatter):
         if entries is None:
             entries = self.all_entries
 
-        ignore_fields = self.ignore_fields or set([])
+        ignore_fields = set([])
         counter = EntryCounter(entries, ignore_fields=ignore_fields)
         counts = counter.get_counts()
         top = next(count for count in counts
-                   if count.field in self.definitive_fields)
+                   if count.field in self.DEFINITIVE_FIELDS)
         field = top.field
         value = top.entries[0][field]
         freq = len(top.entries)

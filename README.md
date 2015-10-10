@@ -3,7 +3,7 @@
 [![Coverage Status](https://coveralls.io/repos/twaugh/journal-brief/badge.svg?branch=master&service=github)](https://coveralls.io/github/twaugh/journal-brief?branch=master)
 
 # journal-brief
-Show new systemd journal entries since last run.
+Show interesting new systemd journal entries since last run.
 
 This can be run from cron to get a briefing of journal entries sent by
 email.  Example:
@@ -13,6 +13,52 @@ $ cat /etc/cron.daily/journal-brief
 #!/bin/sh
 exec journal-brief -p err
 ```
+
+By maintaining a bookmark of the last journal entry processed,
+journal-brief is able to carry on processing journal entries from
+where it left off last time, ensuring no duplicates and no missed
+journal entries.
+
+## Install
+
+### From git
+```
+python3 setup.py install
+```
+
+### From PyPI
+```
+pip3 install journal-brief
+```
+
+## Quick start
+
+One useful feature of journal-brief is that it can generate its own
+configuration of which journal entries to ignore. Most of the messages
+you are likely to want to ignore will come from booting or shutting
+down. Here is the procedure for ignoring those messages:
+
+#### 1. Run journal-brief for the first time, ignoring its output:
+
+```
+journal-brief -b >/dev/null
+```
+
+This will cause the journal bookmark to be updated to the end of the
+journal.
+
+#### 2. Reboot
+
+#### 3. Run journal-brief in debrief mode, to generate configuration:
+
+```
+journal-brief debrief > ~/.config/journal-brief/journal-brief.conf
+```
+
+#### 4. Adjust to taste
+
+Look through `~/.config/journal-brief/journal-brief.conf` to check
+that the exclusions make sense and remove any that do not.
 
 ## Configuration
 
@@ -94,14 +140,3 @@ output.
 To create exclusion rules, rather than showing journal entries, run
 `journal-brief --dry-run debrief`.
 
-## Install
-
-### From git
-```
-python3 setup.py install
-```
-
-### From PyPI
-```
-pip3 install journal-brief
-```

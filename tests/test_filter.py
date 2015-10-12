@@ -20,13 +20,48 @@ import tests.util
 from flexmock import flexmock
 from io import StringIO
 from journal_brief import JournalFilter
-from journal_brief.filter import Exclusion
+from journal_brief.filter import Inclusion, Exclusion
 import logging
 from systemd import journal
 import yaml
 
 
 logging.basicConfig(level=logging.DEBUG)
+
+
+class TestInclusion(object):
+    def test_and(self):
+        inclusion = Inclusion({'MESSAGE': ['include this'],
+                               'SYSLOG_IDENTIFIER': ['from this']})
+        assert inclusion.matches({'MESSAGE': 'include this',
+                                  'SYSLOG_IDENTIFIER': 'from this',
+                                  'IGNORE': 'ignore this'})
+        assert not inclusion.matches({'MESSAGE': 'include this'})
+
+    def test_or(self):
+        inclusion = Inclusion({'MESSAGE': ['include this', 'or this']})
+        assert inclusion.matches({'MESSAGE': 'include this',
+                                  'IGNORE': 'ignore this'})
+        assert not inclusion.matches({'MESSAGE': 'not this',
+                                      'IGNORE': 'ignore this'})
+
+    def test_and_or(self):
+        inclusion = Inclusion({'MESSAGE': ['include this', 'or this'],
+                               'SYSLOG_IDENTIFIER': ['from this']})
+        assert inclusion.matches({'MESSAGE': 'include this',
+                                  'SYSLOG_IDENTIFIER': 'from this',
+                                  'IGNORE': 'ignore this'})
+        assert not inclusion.matches({'MESSAGE': 'include this',
+                                      'SYSLOG_IDENTIFIER': 'at your peril',
+                                      'IGNORE': 'ignore this'})
+
+    def test_priority(self):
+        inclusion = Inclusion({'PRIORITY': 'err'})
+        assert inclusion.matches({'PRIORITY': 3})
+
+    def test_repr(self):
+        incl = {'MESSAGE': ['include this']}
+        assert repr(Inclusion(incl))
 
 
 class TestExclusion(object):
@@ -54,6 +89,10 @@ class TestExclusion(object):
         assert not exclusion.matches({'MESSAGE': 'exclude this',
                                       'SYSLOG_IDENTIFIER': 'at your peril',
                                       'IGNORE': 'ignore this'})
+
+    def test_priority(self):
+        exclusion = Exclusion({'PRIORITY': 'err'})
+        assert exclusion.matches({'PRIORITY': 3})
 
     def test_str_without_comment(self):
         excl = {'MESSAGE': ['exclude this']}

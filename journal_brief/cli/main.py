@@ -96,7 +96,8 @@ class CLI(object):
         strf = "{FREQ:>10}  {EXCLUSION}"
         print(strf.format(FREQ='FREQUENCY', EXCLUSION='EXCLUSION'))
         for stat in stats:
-            print(strf.format(FREQ=stat.hits, EXCLUSION=repr(stat.exclusion)))
+            print(strf.format(FREQ=stat.hits,
+                              EXCLUSION=repr(dict(stat.exclusion))))
 
     def stream_output(self, stream, formatters, jfilter):
         try:

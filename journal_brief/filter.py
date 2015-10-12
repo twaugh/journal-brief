@@ -28,38 +28,87 @@ log = getLogger(__name__)
 ExclusionStatistics = namedtuple('ExclusionStatistics', ['hits', 'exclusion'])
 
 
-class Exclusion(dict):
+class FilterRule(dict):
     """
-    str (field) -> list (str values)
+    A mapping of field names to values that are significant for that field
     """
 
-    def __init__(self, mapping, comment=None):
+    def __init__(self, mapping):
         assert isinstance(mapping, dict)
 
         # Make sure everything is interpreted as a string
         str_mapping = {}
-        log.debug("new exclusion rule:")
         for field, matches in mapping.items():
             if field == 'PRIORITY':
-                str_mapping[field] = [PRIORITY_MAP[match] for match in matches]
+                try:
+                    level = int(PRIORITY_MAP[matches])
+                except (AttributeError, TypeError):
+                    str_mapping[field] = [PRIORITY_MAP[match]
+                                          for match in matches]
+                else:
+                    str_mapping[field] = list(range(level + 1))
             else:
                 str_mapping[field] = [str(match) for match in matches]
 
-            log.debug("%s=%r", field, str_mapping[field])
+        super(FilterRule, self).__init__(str_mapping)
 
-        super(Exclusion, self).__init__(str_mapping)
+    def __str__(self):
+        return yaml.dump([dict(self)],
+                         indent=2,
+                         default_flow_style=False)
+
+    def value_matches(self, field, index, match, value):
+        return match == value
+
+    def matches(self, entry):
+        for field, matches in self.items():
+            is_match = False
+            for index, match in enumerate(matches):
+                if self.value_matches(field, index, match, entry.get(field)):
+                    is_match = True
+                    break
+
+            if not is_match:
+                return False
+
+        return True
+
+
+class Inclusion(FilterRule):
+    """
+    Filter rule for including entries
+    """
+
+    def __repr__(self):
+        return "Inclusion(%s)" % super(Inclusion, self).__repr__()
+
+
+class Exclusion(FilterRule):
+    """
+    Filter rule for excluding entries
+    """
+
+    def __init__(self, mapping, comment=None):
+        super(Exclusion, self).__init__(mapping)
+
+        # Make sure everything is interpreted as a string
+        log.debug("new exclusion rule:")
+        for field, matches in mapping.items():
+            log.debug("%s=%r", field, matches)
+
         self.hits = 0
         self.regexp = {}  # field -> index -> compiled regexp
         self.comment = comment
+
+    def __repr__(self):
+        return "Exclusion(%s)" % super(Exclusion, self).__repr__()
 
     def __str__(self):
         ret = ''
         if self.comment:
             ret += '# {0}\n'.format(self.comment)
 
-        ret += yaml.dump([dict(self)],
-                         indent=2,
-                         default_flow_style=False)
+        ret += super(Exclusion, self).__str__()
         return ret
 
     def value_matches(self, field, index, match, value):
@@ -69,11 +118,15 @@ class Exclusion(dict):
                 log.debug('using cached regexp for %s[%d]:%s',
                           field, index, match)
         except KeyError:
-            if match.startswith('/') and match.endswith('/'):
-                pattern = match[1:-1]
-                log.debug('compiling pattern %r', pattern)
-                regexp = re.compile(pattern)
-            else:
+            try:
+                if match.startswith('/') and match.endswith('/'):
+                    pattern = match[1:-1]
+                    log.debug('compiling pattern %r', pattern)
+                    regexp = re.compile(pattern)
+                else:
+                    regexp = None
+                    log.debug('%r is not a regex', match)
+            except AttributeError:
                 regexp = None
                 log.debug('%r is not a regex', match)
 
@@ -86,20 +139,12 @@ class Exclusion(dict):
         return match == value
 
     def matches(self, entry):
-        for field, matches in self.items():
-            is_match = False
-            for index, match in enumerate(matches):
-                if self.value_matches(field, index, match, entry.get(field)):
-                    is_match = True
-                    log.debug("matched %s[%d]", field, index)
-                    break
+        matched = super(Exclusion, self).matches(entry)
+        if matched:
+            log.debug("excluding entry")
+            self.hits += 1
 
-            if not is_match:
-                return False
-
-        log.debug("excluding entry")
-        self.hits += 1
-        return True
+        return matched
 
 
 class JournalFilter(Iterator):

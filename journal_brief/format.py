@@ -50,6 +50,13 @@ class RegisteredFormatter(type):
 
 class EntryFormatter(object, metaclass=RegisteredFormatter):
     FORMAT_NAME = 'cat'  # for use with get_formatter()
+
+    # Filter rules for journal entries to be processed by this entry
+    # formatter, or None for the rules listed in the configuration
+    # file.
+    FILTER_INCLUSIONS = None
+    FILTER_EXCLUSIONS = None
+
     def format(self, entry):
         """
         Format a single entry.

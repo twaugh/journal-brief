@@ -33,6 +33,14 @@ class SelectiveReader(journal.Reader):
     """
 
     def __init__(self, log_level=None, this_boot=None, inclusions=None):
+        """
+        Constructor
+
+        :param log_level: int, LOG_* priority level
+        :param this_boot: bool, process messages from this boot
+        :param inclusions: dict, field -> values, PRIORITY may use value
+                           instead of list
+        """
         super(SelectiveReader, self).__init__()
 
         log.debug("setting inclusion filters:")

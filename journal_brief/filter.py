@@ -16,7 +16,6 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 ## Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 """
 
-from collections.abc import Iterator
 from collections import namedtuple
 from journal_brief.constants import PRIORITY_MAP
 from logging import getLogger
@@ -25,7 +24,12 @@ import yaml
 
 
 log = getLogger(__name__)
+
+# Statistics about an exclusion filter rule
 ExclusionStatistics = namedtuple('ExclusionStatistics', ['hits', 'exclusion'])
+
+# A set of inclusion and exclusion filter rules
+FilterRules = namedtuple('FilterRules', ['inclusions', 'exclusions'])
 
 
 class FilterRule(dict):
@@ -147,42 +151,94 @@ class Exclusion(FilterRule):
         return matched
 
 
-class JournalFilter(Iterator):
-    """
-    Exclude certain journal entries
+class JournalFilter(object):
+    """Apply filter rules to journal entries for a list of formatters
 
-    Provide a list of exclusions. Each exclusion is a dict whose keys
-    are fields which must all match an entry to be excluded.
+    Provide a list of default filter rules for inclusion and
+    exclusion. Each filter rule is a dict whose keys are fields which
+    must all match an entry to be excluded.
 
     The dict value for each field is a list of possible match values,
     any of which may match.
 
-    Regular expressions are indicated with '/' at the beginning and
-    end of the match string. Regular expressions are matched at the
-    start of the journal field value (i.e. it's a match not a search).
+    For exclusions, regular expressions are indicated with '/' at the
+    beginning and end of the match string. Regular expressions are
+    matched at the start of the journal field value (i.e. it's a match
+    not a search).
+
     """
 
-    def __init__(self, iterator, exclusions=None):
+    def __init__(self,
+                 iterator,
+                 formatters,
+                 default_inclusions=None,
+                 default_exclusions=None):
         """
         Constructor
 
         :param iterator: iterator, providing journal entries
-        :param exclusions: list, dicts of str(field) -> [str(match), ...]
+        :param formatters: list, EntryFormatter instances
+        :param default_inclusions: list, dicts of field -> values for inclusion
+        :param default_exclusions: list, dicts of field -> values for exclusion
         """
         super(JournalFilter, self).__init__()
         self.iterator = iterator
-        if exclusions:
-            self.exclusions = [Exclusion(excl) for excl in exclusions]
-        else:
-            self.exclusions = []
+        self.formatters = formatters
+        self.filter_rules = {}
 
-    def __next__(self):
-        for entry in self.iterator:
-            if not any(exclusion.matches(entry)
-                       for exclusion in self.exclusions):
-                return entry
+        default_inclusions = [Inclusion(incl)
+                              for incl in default_inclusions or []]
+        self.default_exclusions = [Exclusion(excl)
+                                   for excl in default_exclusions or []]
 
-        raise StopIteration
+        # Initialise filters
+        for formatter in formatters:
+            name = formatter.FORMAT_NAME
+            if formatter.FILTER_INCLUSIONS or formatter.FILTER_EXCLUSIONS:
+                inclusions = [Inclusion(incl)
+                              for incl in formatter.FILTER_INCLUSIONS or []]
+                exclusions = [Exclusion(excl)
+                              for excl in formatter.FILTER_EXCLUSIONS or []]
+            else:
+                inclusions = default_inclusions
+                exclusions = self.default_exclusions
+
+            rules = FilterRules(inclusions=inclusions,
+                                exclusions=exclusions)
+            self.filter_rules[name] = rules
+
+    def format(self, stream):
+        try:
+            for entry in self.iterator:
+                default_excl = None
+                for formatter in self.formatters:
+                    rules = self.filter_rules[formatter.FORMAT_NAME]
+                    inclusions = rules.inclusions
+                    if inclusions and not any(inclusion.matches(entry)
+                                              for inclusion in inclusions):
+                        # Doesn't match an inclusion rule
+                        continue
+
+                    if default_excl is None:
+                        # Only match against the default exclusions
+                        # once per message, for efficiency and for
+                        # better statistics gathering
+                        default_excl = any(excl.matches(entry)
+                                           for excl in self.default_exclusions)
+
+                    exclusions = rules.exclusions
+                    if exclusions is self.default_exclusions and default_excl:
+                        # No special rules, matches a default exclusion rule
+                        continue
+
+                    if any(excl.matches(entry) for excl in exclusions):
+                        # Matches one of the formatter's exclusion rules
+                        continue
+
+                    stream.write(formatter.format(entry))
+        finally:
+            for formatter in self.formatters:
+                stream.write(formatter.flush())
 
     def get_statistics(self):
         """
@@ -192,6 +248,6 @@ class JournalFilter(Iterator):
         """
 
         stats = [ExclusionStatistics(excl.hits, excl)
-                 for excl in self.exclusions]
+                 for excl in self.default_exclusions]
         stats.sort(reverse=True, key=lambda stat: stat.hits)
         return stats

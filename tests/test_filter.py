@@ -21,6 +21,7 @@ from flexmock import flexmock
 from io import StringIO
 from journal_brief import JournalFilter
 from journal_brief.filter import Inclusion, Exclusion
+from journal_brief.format import EntryFormatter
 import logging
 from systemd import journal
 import yaml
@@ -113,6 +114,24 @@ class TestExclusion(object):
         assert yaml.load(unyaml) == [excl]
 
 
+class MySpecialFormatter(EntryFormatter):
+    """
+    Only for testing
+    """
+
+    FORMAT_NAME = 'test'
+    FILTER_INCLUSIONS = [{'TEST': ['yes']}]
+    FILTER_EXCLUSIONS = [{'MESSAGE': ['ignore']}]
+
+    def __init__(self, *args, **kwargs):
+        super(MySpecialFormatter, self).__init__(*args, **kwargs)
+        self.entries_received = []
+
+    def format(self, entry):
+        self.entries_received.append(entry)
+        return ''
+
+
 class TestJournalFilter(object):
     def test_no_exclusions(self):
         entries = [{'MESSAGE': 'message 1'},
@@ -123,8 +142,13 @@ class TestJournalFilter(object):
             .and_return(entries[1])
             .and_return({}))
 
-        jfilter = JournalFilter(journal.Reader())
-        assert list(jfilter) == entries
+        formatter = EntryFormatter()
+        jfilter = JournalFilter(journal.Reader(), [formatter])
+        output = StringIO()
+        jfilter.format(output)
+        output.seek(0)
+        lines = output.read().splitlines()
+        assert lines == [entry['MESSAGE'] for entry in entries]
 
     def test_exclusion(self):
         entries = [{'MESSAGE': 'exclude this',
@@ -153,8 +177,14 @@ class TestJournalFilter(object):
                                    'and this'],
                        'SYSLOG_IDENTIFIER': ['from here']},
                       {'PRIORITY': ['info']}]
-        jfilter = JournalFilter(journal.Reader(), exclusions=exclusions)
-        assert list(jfilter) == entries[2:]
+        formatter = EntryFormatter()
+        jfilter = JournalFilter(journal.Reader(), [formatter],
+                                default_exclusions=exclusions)
+        output = StringIO()
+        jfilter.format(output)
+        output.seek(0)
+        lines = output.read().splitlines()
+        assert lines == [entry['MESSAGE'] for entry in entries[2:]]
 
     def test_exclusion_regexp(self):
         entries = [{'MESSAGE': 'exclude this'},
@@ -172,8 +202,15 @@ class TestJournalFilter(object):
         exclusions = [{'MESSAGE': ['/1/']},  # shouldn't exclude anything
                       {'MESSAGE': ['/exclude th/']},
                       {'MESSAGE': ['/exclude/']}]
-        jfilter = JournalFilter(journal.Reader(), exclusions=exclusions)
-        assert list(jfilter) == [entries[1]] + [entries[3]]
+        formatter = EntryFormatter()
+        jfilter = JournalFilter(journal.Reader(), [formatter],
+                                default_exclusions=exclusions)
+        output = StringIO()
+        jfilter.format(output)
+        output.seek(0)
+        lines = output.read().splitlines()
+        assert lines == [entry['MESSAGE']
+                         for entry in [entries[1]] + [entries[3]]]
         stats = jfilter.get_statistics()
         for stat in stats:
             if stat.exclusion['MESSAGE'] == ['/1/']:
@@ -188,8 +225,40 @@ class TestJournalFilter(object):
             .and_return({}))
 
         exclusions = [{'MESSAGE': ['exclude']}]
-        jfilter = JournalFilter(journal.Reader(), exclusions=exclusions)
-        list(jfilter)
+        formatter = EntryFormatter()
+        jfilter = JournalFilter(journal.Reader(), [formatter],
+                                default_exclusions=exclusions)
+        output = StringIO()
+        jfilter.format(output)
         statistics = jfilter.get_statistics()
         assert len(statistics) == 1
         assert statistics[0].hits == 1
+
+    def test_formatter_filters(self):
+        incl_entries = [
+            {
+                'TEST': 'yes',
+                'MESSAGE': 'message',
+            },
+        ]
+        excl_entries = [
+            {
+                'TEST': 'no',
+                'MESSAGE': 'message',
+            },
+            {
+                'TEST': 'yes',
+                'MESSAGE': 'ignore',
+            },
+        ]
+        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
+            .should_receive('get_next')
+            .and_return(incl_entries[0])
+            .and_return(excl_entries[0])
+            .and_return(excl_entries[1])
+            .and_return({}))
+
+        formatter = MySpecialFormatter()
+        jfilter = JournalFilter(journal.Reader(), [formatter])
+        jfilter.format(StringIO())
+        assert formatter.entries_received == incl_entries

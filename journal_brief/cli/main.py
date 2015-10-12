@@ -56,6 +56,11 @@ class InstanceConfig(object):
         return value
 
 
+class NullStream(object):
+    def write(self, data):
+        pass
+
+
 class CLI(object):
     def __init__(self, args=None):
         self.args = self.get_args(args or sys.argv[1:])
@@ -88,9 +93,8 @@ class CLI(object):
         cmds.add_parser('stats', help='show statistics')
         return parser.parse_args(args)
 
-    def show_stats(self, entries, exclusions):
-        jfilter = JournalFilter(entries, exclusions=exclusions)
-        list(jfilter)
+    def show_stats(self, jfilter):
+        jfilter.format(NullStream())
         stats = jfilter.get_statistics()
         log.debug("stats: %r", stats)
         strf = "{FREQ:>10}  {EXCLUSION}"
@@ -98,15 +102,6 @@ class CLI(object):
         for stat in stats:
             print(strf.format(FREQ=stat.hits,
                               EXCLUSION=repr(dict(stat.exclusion))))
-
-    def stream_output(self, stream, formatters, jfilter):
-        try:
-            for entry in jfilter:
-                for formatter in formatters:
-                    stream.write(formatter.format(entry))
-        finally:
-            for formatter in formatters:
-                stream.write(formatter.flush())
 
     def run(self):
         if self.config.get('debug'):
@@ -132,25 +127,37 @@ class CLI(object):
             log_level = int(PRIORITY_MAP[priority])
             log.debug("priority=%r from args/config", log_level)
 
+        if self.args.cmd == 'debrief':
+            formatters = [get_formatter('config')]
+        else:
+            outputs = self.config.get('output', 'short').split(',')
+            formatters = [get_formatter(output) for output in outputs]
+
+        default_inclusions = self.config.get('inclusions')
+        if default_inclusions:
+            inclusions = default_inclusions[:]
+        else:
+            inclusions = []
+
+        for formatter in formatters:
+            if formatter.FILTER_INCLUSIONS is not None:
+                inclusions.extend(formatter.FILTER_INCLUSIONS)
+
         reader = SelectiveReader(this_boot=self.args.b,
                                  log_level=log_level,
-                                 inclusions=self.config.get('inclusions'))
+                                 inclusions=inclusions)
         with LatestJournalEntries(cursor_file=cursor_file,
                                   reader=reader,
                                   dry_run=self.args.dry_run,
                                   seek_cursor=not self.args.b) as entries:
             exclusions = self.config.get('exclusions', [])
-            jfilter = JournalFilter(entries, exclusions=exclusions)
+            jfilter = JournalFilter(entries, formatters,
+                                    default_inclusions=default_inclusions,
+                                    default_exclusions=exclusions)
             if self.args.cmd == 'stats':
-                self.show_stats(entries, exclusions)
+                self.show_stats(jfilter)
             else:
-                if self.args.cmd == 'debrief':
-                    formatters = [get_formatter('config')]
-                else:
-                    formats = self.config.get('output', 'short').split(',')
-                    formatters = [get_formatter(format) for format in formats]
-
-                self.stream_output(sys.stdout, formatters, jfilter)
+                jfilter.format(sys.stdout)
 
 
 def run():

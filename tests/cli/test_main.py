@@ -26,6 +26,7 @@ import logging
 import os
 from systemd import journal
 from tempfile import NamedTemporaryFile
+from tests.test_filter import MySpecialFormatter
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -50,7 +51,7 @@ class TestCLI(object):
             assert cli.config.get('priority') == 'debug'
 
     def test_normal_run(self, capsys):
-        (flexmock(journal.Reader)
+        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
             .should_receive('get_next')
             .and_return({'__CURSOR': '1',
                          '__REALTIME_TIMESTAMP': datetime.now(),
@@ -72,7 +73,7 @@ class TestCLI(object):
         assert len(out.splitlines()) == 2
 
     def test_dry_run(self):
-        (flexmock(journal.Reader)
+        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
             .should_receive('get_next')
             .and_return({'__CURSOR': '1',
                          '__REALTIME_TIMESTAMP': datetime.now(),
@@ -89,6 +90,7 @@ class TestCLI(object):
 
     def test_this_boot(self):
         final_cursor = '1'
+        flexmock(journal.Reader, add_match=None, add_disjunction=None)
         (flexmock(journal.Reader)
             .should_receive('this_boot')
             .once())
@@ -111,6 +113,7 @@ class TestCLI(object):
                 assert cursorfile.read() == final_cursor
 
     def test_log_level(self):
+        flexmock(journal.Reader, add_match=None, add_disjunction=None)
         (flexmock(journal.Reader)
             .should_receive('log_level')
             .with_args(journal.LOG_ERR)
@@ -143,7 +146,7 @@ class TestCLI(object):
             assert not os.access(cursorfile.name, os.F_OK)
 
     def test_stats(self, capsys):
-        (flexmock(journal.Reader)
+        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
             .should_receive('get_next')
             .and_return({'__CURSOR': '1',
                          '__REALTIME_TIMESTAMP': datetime.now(),
@@ -240,7 +243,7 @@ exclusions:
         assert not out
 
     def test_exclusions_yaml(self, capsys):
-        (flexmock(journal.Reader)
+        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
             .should_receive('get_next')
             .and_return({'__CURSOR': '1',
                          '__REALTIME_TIMESTAMP': datetime.now(),
@@ -343,3 +346,32 @@ cursor-file: {cursor}
         del entry['__REALTIME_TIMESTAMP']
         del output['__REALTIME_TIMESTAMP']
         assert output == entry
+
+    def test_formatter_filter(self, capsys):
+        """
+        Just a coverage test
+        """
+        entry = {
+            '__CURSOR': '1',
+            '__REALTIME_TIMESTAMP': datetime.now(),
+            'TEST': 'test',
+            'MESSAGE': 'message',
+        }
+
+        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
+            .should_receive('get_next')
+            .and_return(entry)
+            .and_return({}))
+
+        with NamedTemporaryFile(mode='rt') as cursorfile:
+            with NamedTemporaryFile(mode='wt') as configfile:
+                configfile.write("""
+cursor-file: {cursor}
+""".format(cursor=cursorfile.name))
+                configfile.flush()
+                cli = CLI(args=['--conf', configfile.name,
+                                '-o', 'test'])
+                cli.run()
+
+        (out, err) = capsys.readouterr()
+        assert not err

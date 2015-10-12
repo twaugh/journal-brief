@@ -43,3 +43,7 @@ class Reader(Iterator):
 
     def seek_cursor(self, cursor):
         raise RuntimeError
+
+
+class Monotonic(object):
+    pass

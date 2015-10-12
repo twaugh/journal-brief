@@ -21,6 +21,7 @@ from flexmock import flexmock
 from tests.util import Watcher
 from journal_brief.cli.main import CLI
 from journal_brief.filter import JournalFilter
+import json
 import logging
 import os
 from systemd import journal
@@ -310,3 +311,35 @@ inclusions:
 
         # And a final disjuction
         assert watcher.calls[9] == ('add_disjunction', (), '{}')
+
+    def test_multiple_output_formats(self, capsys):
+        entry = {
+            '__CURSOR': '1',
+            '__REALTIME_TIMESTAMP': datetime.now(),
+            'MESSAGE': 'message',
+        }
+
+        (flexmock(journal.Reader)
+            .should_receive('get_next')
+            .and_return(entry)
+            .and_return({}))
+
+        with NamedTemporaryFile(mode='rt') as cursorfile:
+            with NamedTemporaryFile(mode='wt') as configfile:
+                configfile.write("""
+cursor-file: {cursor}
+""".format(cursor=cursorfile.name))
+                configfile.flush()
+                cli = CLI(args=['--conf', configfile.name,
+                                '-o', 'cat,cat,json'])
+                cli.run()
+
+        (out, err) = capsys.readouterr()
+        assert not err
+        lines = out.splitlines()
+        assert len(lines) == 3
+        assert lines[0] == lines[1] == 'message'
+        output = json.loads(lines[2])
+        del entry['__REALTIME_TIMESTAMP']
+        del output['__REALTIME_TIMESTAMP']
+        assert output == entry

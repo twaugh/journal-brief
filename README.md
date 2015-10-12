@@ -52,7 +52,7 @@ journal.
 #### 3. Run journal-brief in debrief mode, to generate configuration:
 
 ```
-journal-brief debrief > ~/.config/journal-brief/journal-brief.conf
+journal-brief -p err debrief > ~/.config/journal-brief/journal-brief.conf
 ```
 
 #### 4. Adjust to taste

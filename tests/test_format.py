@@ -73,3 +73,12 @@ class TestShortEntryFormatter(object):
         date = 'Jan 01 00:00:00 '
         assert formatted.startswith(date)
         assert formatted[len(date):] == expected
+
+
+class TestRebootEntryFormatter(object):
+    def test_reboot(self):
+        formatter = get_formatter('reboot')
+        assert formatter.format({'_BOOT_ID': '1'}) == ''
+        assert formatter.format({'_BOOT_ID': '2'}) == '-- Reboot --\n'
+        assert formatter.format({'_BOOT_ID': '2'}) == ''
+        assert formatter.flush() == ''

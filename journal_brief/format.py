@@ -49,6 +49,10 @@ class RegisteredFormatter(type):
 
 
 class EntryFormatter(object, metaclass=RegisteredFormatter):
+    """
+    Only display MESSAGE field
+    """
+
     FORMAT_NAME = 'cat'  # for use with get_formatter()
 
     # Filter rules for journal entries to be processed by this entry
@@ -79,7 +83,7 @@ class EntryFormatter(object, metaclass=RegisteredFormatter):
 
 class ShortEntryFormatter(EntryFormatter):
     """
-    Convert a journal entry into a string
+    Output like a log file
     """
 
     FORMAT_NAME = 'short'
@@ -122,6 +126,10 @@ class ShortEntryFormatter(EntryFormatter):
 
 
 class JSONEntryFormatter(EntryFormatter):
+    """
+    JSON format
+    """
+
     FORMAT_NAME = 'json'
     JSON_DUMPS_KWARGS = {}
 
@@ -151,5 +159,38 @@ class JSONEntryFormatter(EntryFormatter):
 
 
 class JSONPrettyEntryFormatter(JSONEntryFormatter):
+    """
+    Pretty JSON format
+    """
+
     FORMAT_NAME = 'json-pretty'
     JSON_DUMPS_KWARGS = {'indent': 8}
+
+
+class RebootFormatter(EntryFormatter):
+    """
+    Display a message on each reboot
+
+    Only shows reboots between entries that are to be shown.
+    """
+
+    FORMAT_NAME = 'reboot'
+
+    def __init__(self, *args, **kwargs):
+        super(RebootFormatter, self).__init__(*args, **kwargs)
+        self.this_boot_id = None
+
+    def format(self, entry):
+        try:
+            boot_id = entry['_BOOT_ID']
+        except KeyError:
+            return ''
+        else:
+            reboot = (self.this_boot_id is not None and
+                      self.this_boot_id != boot_id)
+            self.this_boot_id = boot_id
+
+            if reboot:
+                return '-- Reboot --\n'
+
+        return ''

@@ -375,3 +375,11 @@ cursor-file: {cursor}
 
         (out, err) = capsys.readouterr()
         assert not err
+
+    def test_help_output(self, capsys):
+        cli = CLI(args=['--help-output'])
+        cli.run()
+
+        (out, err) = capsys.readouterr()
+        assert not err
+        assert out

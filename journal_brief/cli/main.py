@@ -86,6 +86,9 @@ class CLI(object):
         helptxt = ('output format for journal entries, '
                    'comma-separated list from {0}'.format(list_formatters()))
         parser.add_argument('-o', '--output', metavar='FORMAT', help=helptxt)
+        parser.add_argument('--help-output', action='store_true',
+                            default=False,
+                            help='display information about output formats')
 
         cmds = parser.add_subparsers(dest='cmd')
         cmds.add_parser('debrief', help='create exclusions config')
@@ -104,6 +107,25 @@ class CLI(object):
                               EXCLUSION=repr(dict(stat.exclusion))))
 
     def run(self):
+        default_output_format = 'reboot,short'
+
+        if self.args.help_output:
+            print("Available output formats:")
+            for output in list_formatters():
+                print("\n{0}:".format(output))
+                formatter = get_formatter(output)
+                docstring = [line.strip()
+                             for line in formatter.__doc__.splitlines()]
+                while docstring and not docstring[0]:
+                    del docstring[0]
+                while docstring and not docstring[-1]:
+                    del docstring[-1]
+                print('\n'.join(['    ' + line for line in docstring]))
+
+            print("\nMultiple output formats can be used at the same time.")
+            print("The default is '{0}'".format(default_output_format))
+            return
+
         if self.config.get('debug'):
             logging.basicConfig(level=logging.DEBUG)
 
@@ -130,7 +152,8 @@ class CLI(object):
         if self.args.cmd == 'debrief':
             formatters = [get_formatter('config')]
         else:
-            outputs = self.config.get('output', 'short').split(',')
+            outputs = self.config.get('output',
+                                      default_output_format).split(',')
             formatters = [get_formatter(output) for output in outputs]
 
         default_inclusions = self.config.get('inclusions')

@@ -125,7 +125,9 @@ class EntryCounter(object):
 
 class Debriefer(EntryFormatter):
     """
-    Build exclusions list covering all entries.
+    Build exclusions list covering all entries
+
+    This is the same as using the 'debrief' subcommand.
     """
 
     FORMAT_NAME = 'config'

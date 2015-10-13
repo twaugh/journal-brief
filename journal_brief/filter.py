@@ -20,6 +20,8 @@ from collections import namedtuple
 from journal_brief.constants import PRIORITY_MAP
 from logging import getLogger
 import re
+from systemd import journal
+from uuid import UUID
 import yaml
 
 
@@ -30,6 +32,14 @@ ExclusionStatistics = namedtuple('ExclusionStatistics', ['hits', 'exclusion'])
 
 # A set of inclusion and exclusion filter rules
 FilterRules = namedtuple('FilterRules', ['inclusions', 'exclusions'])
+
+
+DEFAULT_CONVERTERS = journal.DEFAULT_CONVERTERS.copy()
+DEFAULT_CONVERTERS.update({
+    '_BOOT_ID': UUID,
+    '_MACHINE_ID': UUID,
+    'MESSAGE_ID': UUID,
+})
 
 
 class FilterRule(dict):
@@ -52,7 +62,8 @@ class FilterRule(dict):
                 else:
                     str_mapping[field] = list(range(level + 1))
             else:
-                str_mapping[field] = [str(match) for match in matches]
+                converter = DEFAULT_CONVERTERS.get(field, str)
+                str_mapping[field] = [converter(match) for match in matches]
 
         super(FilterRule, self).__init__(str_mapping)
 
@@ -140,7 +151,7 @@ class Exclusion(FilterRule):
         if regexp is not None:
             return regexp.match(value)
 
-        return match == value
+        return super(Exclusion, self).value_matches(field, index, match, value)
 
     def matches(self, entry):
         matched = super(Exclusion, self).matches(entry)

@@ -16,6 +16,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 ## Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 """
 
+from collections import defaultdict
 import datetime
 import json
 import logging
@@ -194,3 +195,42 @@ class RebootFormatter(EntryFormatter):
                 return '-- Reboot --\n'
 
         return ''
+
+
+class LoginFormatter(EntryFormatter):
+    """
+    Show a summary of login sessions
+    """
+
+    FORMAT_NAME = "login"
+    FILTER_INCLUSIONS = [
+        {
+            # New session
+            'PRIORITY': 'info',
+            'MESSAGE_ID': ['8d45620c1a4348dbb17410da57c60c66'],
+            '_COMM': ['systemd-logind'],
+        },
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(LoginFormatter, self).__init__(*args, **kwargs)
+        self.login = defaultdict(int)
+
+    def format(self, entry):
+        if 'USER_ID' not in entry:
+            return
+
+        self.login[entry['USER_ID']] += 1
+        return ''
+
+    def flush(self):
+        if not self.login:
+            return ''
+
+        ret = '\nUser logins:\n\n'
+        logins = list(self.login.items())
+        logins.sort()
+        for user, count in logins:
+            ret += '{count:>5} x {user}\n'.format(user=user, count=count)
+
+        return ret

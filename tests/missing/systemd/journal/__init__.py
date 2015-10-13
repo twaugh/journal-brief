@@ -10,6 +10,8 @@ LOG_NOTICE = 5
 LOG_INFO = 6
 LOG_DEBUG = 7
 
+DEFAULT_CONVERTERS = {}
+
 
 class Reader(Iterator):
     """

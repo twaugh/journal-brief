@@ -20,7 +20,6 @@ import argparse
 import logging
 import os
 import sys
-from systemd import journal
 
 from journal_brief import (SelectiveReader,
                            LatestJournalEntries,
@@ -63,7 +62,8 @@ class CLI(object):
         config = Config(config_file=self.args.conf)
         self.config = InstanceConfig(config, self.args)
 
-    def get_args(self, args):
+    @staticmethod
+    def get_args(args):
         description = 'Show new journal entries since last run'
         parser = argparse.ArgumentParser(description=description)
         parser.add_argument('-b', action='store_true', default=False,
@@ -78,12 +78,12 @@ class CLI(object):
                             help='enable debugging')
         parser.add_argument('--dry-run', action='store_true', default=False,
                             help='do not update cursor bookmark file')
-        help = ('output format for journal entries, '
-                'comma-separated list from {0}'.format(list_formatters()))
-        parser.add_argument('-o', '--output', metavar='FORMAT', help=help)
+        helptxt = ('output format for journal entries, '
+                   'comma-separated list from {0}'.format(list_formatters()))
+        parser.add_argument('-o', '--output', metavar='FORMAT', help=helptxt)
 
         cmds = parser.add_subparsers(dest='cmd')
-        debrief = cmds.add_parser('debrief', help='create exclusions config')
+        cmds.add_parser('debrief', help='create exclusions config')
         cmds.add_parser('reset', help='reset cursor bookmark and exit')
         cmds.add_parser('stats', help='show statistics')
         return parser.parse_args(args)

@@ -18,7 +18,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
 from collections.abc import Iterator
 import errno
-from journal_brief.constants import CONFIG_DIR, PRIORITY_MAP
+from journal_brief.constants import PRIORITY_MAP
 from logging import getLogger
 import os
 from systemd import journal

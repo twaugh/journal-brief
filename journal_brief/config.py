@@ -67,7 +67,7 @@ class SemanticError(ConfigError):
         self.index = index
 
     def __str__(self):
-        conf = yaml.dump(self.conf ,
+        conf = yaml.dump(self.conf,
                          indent=2,
                          default_flow_style=False)
         if self.index is None:
@@ -155,25 +155,25 @@ class Config(dict):
     def validate_allowed_keywords(self):
         for unexpected_key in set(self) - self.ALLOWED_KEYWORDS:
             yield SemanticError('unexpected keyword', unexpected_key,
-                              {unexpected_key: self[unexpected_key]})
+                                {unexpected_key: self[unexpected_key]})
 
     def validate_cursor_file(self):
-        if not 'cursor-file' in self:
+        if 'cursor-file' not in self:
             return
 
         if not (isinstance(self['cursor-file'], str) or
                 isinstance(self['cursor-file'], int)):
             yield SemanticError('expected string', 'cursor-file',
-                              {'cursor-file': self['cursor-file']})
+                                {'cursor-file': self['cursor-file']})
 
     def validate_debug(self):
-        if not 'debug' in self:
+        if 'debug' not in self:
             return
 
         if not (isinstance(self['debug'], bool) or
                 isinstance(self['debug'], int)):
             yield SemanticError('expected bool', 'debug',
-                              {'debug': self['debug']})
+                                {'debug': self['debug']})
 
     def validate_output(self):
         if 'output' not in self:
@@ -203,16 +203,16 @@ class Config(dict):
         finally:
             if not valid:
                 yield SemanticError('invalid priority, must be in %s' %
-                                  valid_prios, 'priority',
-                                  {'priority': self['priority']})
+                                    valid_prios, 'priority',
+                                    {'priority': self['priority']})
 
     def validate_inclusions_or_exclusions(self, valid_prios, key):
-        if not key in self:
+        if key not in self:
             return
 
         if not isinstance(self[key], list):
             yield SemanticError('must be a list', key,
-                              {key: self[key]})
+                                {key: self[key]})
             return
 
         for error in self.find_bad_rules(valid_prios, key):
@@ -242,33 +242,33 @@ class Config(dict):
                             message = ('must be list or priority (%s)' %
                                        valid_prios)
                             yield SemanticError(message, field,
-                                              {key: [{field: values}]},
-                                              index=index)
+                                                {key: [{field: values}]},
+                                                index=index)
 
                     continue
 
                 if not isinstance(values, list):
                     yield SemanticError('must be a list', field,
-                                      {key: [{field: values}]},
-                                      index=index)
+                                        {key: [{field: values}]},
+                                        index=index)
                     continue
 
                 for value in values:
                     if (isinstance(value, list) or
-                        isinstance(value, dict)):
+                            isinstance(value, dict)):
                         yield SemanticError('must be a string', value,
-                                          {key: [{field: values}]},
-                                          index=index)
+                                            {key: [{field: values}]},
+                                            index=index)
                         continue
 
                     if (key == 'exclusions' and
-                        isinstance(value, str) and
-                        value.startswith('/') and
-                        value.endswith('/')):
+                            isinstance(value, str) and
+                            value.startswith('/') and
+                            value.endswith('/')):
                         try:
                             # TODO: use this computed value
                             re.compile(value[1:-1])
                         except sre_constants.error as ex:
                             yield SemanticError(ex.args[0], value,
-                                              {key: [{field: values}]},
-                                              index=index)
+                                                {key: [{field: values}]},
+                                                index=index)

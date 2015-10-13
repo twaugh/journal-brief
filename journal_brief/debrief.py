@@ -99,7 +99,8 @@ class EntryCounter(object):
         for entry_dict in self.reader:
             entry = Entry(entry_dict)
             self.total_entries += 1
-            for entry_str in entry.as_strings(ignore_fields=self.ignore_fields):
+            strings = entry.as_strings(ignore_fields=self.ignore_fields)
+            for entry_str in strings:
                 try:
                     counted = self.counts[entry_str]
                     counted.entries.append(entry)
@@ -217,8 +218,8 @@ class Debriefer(EntryFormatter):
             self.get_top()
         except StopIteration:
             pass
-        finally:
-            return self.exclusions
+
+        return self.exclusions
 
     def format(self, entry):
         self.all_entries.append(entry)
@@ -233,6 +234,6 @@ class Debriefer(EntryFormatter):
             exclusions_yaml += ''.join(indented)
 
         if exclusions_yaml:
-            return "exclusions:\n{0}".format (exclusions_yaml)
+            return "exclusions:\n{0}".format(exclusions_yaml)
 
         return ''

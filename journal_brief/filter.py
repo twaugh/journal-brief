@@ -20,7 +20,6 @@ from collections.abc import Iterator
 from collections import namedtuple
 from journal_brief.constants import PRIORITY_MAP
 from logging import getLogger
-import os
 import re
 import yaml
 

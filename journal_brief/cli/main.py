@@ -156,7 +156,13 @@ class CLI(object):
                                       default_output_format).split(',')
             formatters = [get_formatter(output) for output in outputs]
 
-        default_inclusions = self.config.get('inclusions')
+        if any(formatter.FILTER_INCLUSIONS is None
+               for formatter in formatters):
+            default_inclusions = self.config.get('inclusions')
+        else:
+            # None of our formatters need the inclusions from config
+            default_inclusions = None
+
         if default_inclusions:
             inclusions = default_inclusions[:]
         else:

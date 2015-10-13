@@ -154,7 +154,12 @@ class CLI(object):
         else:
             outputs = self.config.get('output',
                                       default_output_format).split(',')
-            formatters = [get_formatter(output) for output in outputs]
+            try:
+                formatters = [get_formatter(output) for output in outputs]
+            except KeyError as ex:
+                sys.stderr.write("{0}: invalid output format '{1}'\n"
+                                 .format(PACKAGE, ex.args[0]))
+                sys.exit(1)
 
         if any(formatter.FILTER_INCLUSIONS is None
                for formatter in formatters):

@@ -21,4 +21,4 @@ from journal_brief.filter import JournalFilter
 from journal_brief.format import list_formatters, get_formatter
 from journal_brief.config import Config
 
-__version__ = '1.0.0'  # also update setup.py
+__version__ = '1.1.0'  # also update setup.py

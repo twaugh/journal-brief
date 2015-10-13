@@ -17,6 +17,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 """
 
 import argparse
+import errno
 import logging
 import os
 import sys
@@ -200,7 +201,10 @@ def run():
     except KeyboardInterrupt:
         pass
     except IOError as ex:
-        sys.stderr.write("{0}: {1}\n".format(PACKAGE, os.strerror(ex.errno)))
+        if ex.errno != errno.EPIPE:
+            sys.stderr.write("{0}: {1}\n".format(PACKAGE,
+                                                 os.strerror(ex.errno)))
+
         sys.exit(1)
     except ConfigError:
         sys.exit(1)

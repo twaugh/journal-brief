@@ -1,0 +1,8 @@
+include setup.py
+include setup.cfg
+include LICENSE
+include README.md
+include *.spec
+recursive-include conf *.conf
+recursive-include journal_brief *.py
+recursive-include tests *.py

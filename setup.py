@@ -52,7 +52,11 @@ setup(
         'console_scripts': ['journal-brief=journal_brief.cli.main:run'],
     },
     install_requires=['PyYAML'],
-    packages=find_packages(exclude=['tests']),
+    packages=find_packages(exclude=['tests',
+                                    'tests.cli',
+                                    'tests.missing',
+                                    'tests.missing.systemd',
+                                    'tests.missing.systemd.journal']),
     package_data={'': ['conf/journal-brief.conf']},
 )
 

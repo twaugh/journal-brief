@@ -18,8 +18,8 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
 from datetime import datetime, timezone, timedelta
 from journal_brief.format import get_formatter
+import journal_brief.format.short
 import pytest
-from uuid import UUID
 
 
 class TestShortEntryFormatter(object):
@@ -74,35 +74,3 @@ class TestShortEntryFormatter(object):
         date = 'Jan 01 00:00:00 '
         assert formatted.startswith(date)
         assert formatted[len(date):] == expected
-
-
-class TestRebootEntryFormatter(object):
-    def test_reboot(self):
-        formatter = get_formatter('reboot')
-        assert formatter.format({'_BOOT_ID': '1'}) == ''
-        assert formatter.format({'_BOOT_ID': '2'}) == '-- Reboot --\n'
-        assert formatter.format({'_BOOT_ID': '2'}) == ''
-        assert formatter.flush() == ''
-
-
-class TestLoginEntryFormatter(object):
-    def test_no_logins(self):
-        formatter = get_formatter('login')
-        assert formatter.flush() == ''
-
-    def test_login(self):
-        formatter = get_formatter('login')
-        base = formatter.FILTER_INCLUSIONS[0].copy()
-        base['MESSAGE_ID'] = [UUID(uuid) for uuid in base['MESSAGE_ID']]
-        for user in ['user1', 'user2', 'user1']:
-            entry = base.copy()
-            entry['USER_ID'] = user
-            assert formatter.format(entry) == ''
-
-        assert formatter.flush().splitlines() == [
-            '',
-            'User logins:',
-            '',
-            '    2 x user1',
-            '    1 x user2',
-        ]

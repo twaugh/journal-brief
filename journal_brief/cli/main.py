@@ -30,6 +30,10 @@ from journal_brief import (SelectiveReader,
 from journal_brief.config import Config, ConfigError
 from journal_brief.constants import PACKAGE, CONFIG_DIR, PRIORITY_MAP
 from journal_brief.debrief import Debriefer
+import journal_brief.format.short
+import journal_brief.format.json
+import journal_brief.format.reboot
+import journal_brief.format.login
 
 
 log = logging.getLogger('cli')

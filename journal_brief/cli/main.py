@@ -29,7 +29,7 @@ from journal_brief import (SelectiveReader,
                            JournalFilter)
 from journal_brief.config import Config, ConfigError
 from journal_brief.constants import PACKAGE, CONFIG_DIR, PRIORITY_MAP
-from journal_brief.debrief import Debriefer
+import journal_brief.format.config
 import journal_brief.format.short
 import journal_brief.format.json
 import journal_brief.format.reboot

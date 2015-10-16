@@ -17,7 +17,8 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 """
 
 import tests.util
-from journal_brief.debrief import EntryCounter, Debriefer
+from journal_brief.format import get_formatter
+from journal_brief.format.config import EntryCounter
 import logging
 
 
@@ -71,7 +72,7 @@ class TestDebriefer(object):
                    'KEY': 'multiple'},
                   {'MESSAGE': 'message 2',
                    'KEY': 'single'}]
-        dbr = Debriefer()
+        dbr = get_formatter('config')
         formatted = ''
         for entry in reader:
             formatted += dbr.format(entry)

@@ -64,6 +64,20 @@ class SelectiveReader(journal.Reader):
         rules += [Rule(log_level=None, inclusion=inclusion)
                   for inclusion in explicit_inclusions or []]
 
+        if rules:
+            self.set_filter_rules(rules, this_boot=this_boot)
+        else:
+            if this_boot:
+                log.debug("this_boot()")
+                self.this_boot()
+
+            if log_level is not None:
+                log.debug("log_level(%r)", log_level)
+                self.log_level(log_level)
+
+        log.debug("no more inclusion filters")
+
+    def set_filter_rules(self, rules, this_boot=None):
         for index, rule in enumerate(rules):
             if index:
                 log.debug("-or-")
@@ -104,17 +118,6 @@ class SelectiveReader(journal.Reader):
             if rule.log_level is not None:
                 log.debug("log_level(%r)", rule.log_level)
                 self.log_level(rule.log_level)
-
-        if not rules:
-            if this_boot:
-                log.debug("this_boot()")
-                self.this_boot()
-
-            if log_level is not None:
-                log.debug("log_level(%r)", log_level)
-                self.log_level(log_level)
-
-        log.debug("no more inclusion filters")
 
 
 class LatestJournalEntries(Iterator):

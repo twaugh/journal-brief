@@ -129,7 +129,11 @@ class MySpecialFormatter(EntryFormatter):
 
     def format(self, entry):
         self.entries_received.append(entry)
-        return ''
+        return entry.get('OUTPUT', '')
+
+    def flush(self):
+        # format() should handle None here
+        return None
 
 
 class TestJournalFilter(object):
@@ -240,6 +244,11 @@ class TestJournalFilter(object):
                 'TEST': 'yes',
                 'MESSAGE': 'message',
             },
+            {
+                'TEST': 'yes',
+                'MESSAGE': 'message',
+                'OUTPUT': None,  # Test returning None from format()
+            },
         ]
         excl_entries = [
             {
@@ -254,6 +263,7 @@ class TestJournalFilter(object):
         (flexmock(journal.Reader, add_match=None, add_disjunction=None)
             .should_receive('get_next')
             .and_return(incl_entries[0])
+            .and_return(incl_entries[1])
             .and_return(excl_entries[0])
             .and_return(excl_entries[1])
             .and_return({}))

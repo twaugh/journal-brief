@@ -247,13 +247,13 @@ class JournalFilter(object):
                         # Matches one of the formatter's exclusion rules
                         continue
 
-                    stream.write(formatter.format(entry))
+                    stream.write(formatter.format(entry) or '')
         except BrokenPipeError:
             do_flush = False
         finally:
             if do_flush:
                 for formatter in self.formatters:
-                    stream.write(formatter.flush())
+                    stream.write(formatter.flush() or '')
 
     def get_statistics(self):
         """

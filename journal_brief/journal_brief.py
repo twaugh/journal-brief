@@ -16,6 +16,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 ## Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 """
 
+from collections import namedtuple
 from collections.abc import Iterator
 import errno
 from journal_brief.constants import PRIORITY_MAP
@@ -32,60 +33,79 @@ class SelectiveReader(journal.Reader):
     A Reader instance with matches applied
     """
 
-    def __init__(self, log_level=None, this_boot=None, inclusions=None):
-        """
-        Constructor
+    def __init__(self, log_level=None, this_boot=None, inclusions=None,
+                 explicit_inclusions=None):
+        """Constructor
 
         :param log_level: int, LOG_* priority level
         :param this_boot: bool, process messages from this boot
         :param inclusions: dict, field -> values, PRIORITY may use value
                            instead of list
+        :param explicit_inclusions: dict, field -> values, but
+                                    log_level is not applied to any of
+                                    these
+
         """
         super(SelectiveReader, self).__init__()
 
         log.debug("setting inclusion filters:")
-        if inclusions:
-            assert isinstance(inclusions, list)
-            for inclusion in inclusions:
-                assert isinstance(inclusion, dict)
-                for field, matches in inclusion.items():
-                    if field == 'PRIORITY':
-                        try:
-                            this_log_level = int(PRIORITY_MAP[matches])
-                        except (AttributeError, TypeError):
-                            pass
-                        else:
-                            # These are equivalent:
-                            # - PRIORITY: 3
-                            # - PRIORITY: err
-                            # - PRIORITY: [0, 1, 2, 3]
-                            # - PRIORITY: [emerg, alert, crit, err]
-                            log.debug("log_level(%r)", this_log_level)
-                            self.log_level(this_log_level)
-                            continue
+        assert not inclusions or isinstance(inclusions, list)
+        assert not explicit_inclusions or isinstance(explicit_inclusions, list)
 
-                    assert isinstance(matches, list)
-                    for match in matches:
-                        if field == 'PRIORITY':
-                            try:
-                                match = PRIORITY_MAP[match]
-                            except (AttributeError, TypeError):
-                                pass
+        Rule = namedtuple('Rule', ('log_level', 'inclusion'))
 
-                        log.debug("%s=%s", field, match)
-                        self.add_match(**{str(field): str(match)})
+        # 'inclusions' use 'log_level' for each disjunct
+        rules = [Rule(log_level=log_level, inclusion=inclusion)
+                 for inclusion in inclusions or []]
 
-                if this_boot:
-                    log.debug("this_boot()")
-                    self.this_boot()
+        # 'explicit_inclusions' don't. This is to allow output
+        # formatters to specify their own explicit inclusions rules
+        # without needing to set PRIORITY.
+        rules += [Rule(log_level=None, inclusion=inclusion)
+                  for inclusion in explicit_inclusions or []]
 
-                if log_level is not None:
-                    log.debug("log_level(%r)", log_level)
-                    self.log_level(log_level)
-
+        for index, rule in enumerate(rules):
+            if index:
                 log.debug("-or-")
                 self.add_disjunction()
-        else:
+
+            assert isinstance(rule.inclusion, dict)
+            for field, matches in rule.inclusion.items():
+                if field == 'PRIORITY':
+                    try:
+                        this_log_level = int(PRIORITY_MAP[matches])
+                    except (AttributeError, TypeError):
+                        pass
+                    else:
+                        # These are equivalent:
+                        # - PRIORITY: 3
+                        # - PRIORITY: err
+                        # - PRIORITY: [0, 1, 2, 3]
+                        # - PRIORITY: [emerg, alert, crit, err]
+                        log.debug("log_level(%r)", this_log_level)
+                        self.log_level(this_log_level)
+                        continue
+
+                assert isinstance(matches, list)
+                for match in matches:
+                    if field == 'PRIORITY':
+                        try:
+                            match = PRIORITY_MAP[match]
+                        except (AttributeError, TypeError):
+                            pass
+
+                    log.debug("%s=%s", field, match)
+                    self.add_match(**{str(field): str(match)})
+
+            if this_boot:
+                log.debug("this_boot()")
+                self.this_boot()
+
+            if rule.log_level is not None:
+                log.debug("log_level(%r)", rule.log_level)
+                self.log_level(rule.log_level)
+
+        if not rules:
             if this_boot:
                 log.debug("this_boot()")
                 self.this_boot()

@@ -33,7 +33,6 @@ class LoginFormatter(EntryFormatter):
     FILTER_INCLUSIONS = [
         {
             # New session
-            'PRIORITY': 'info',
             'MESSAGE_ID': ['8d45620c1a4348dbb17410da57c60c66'],
             '_COMM': ['systemd-logind'],
         },
@@ -45,7 +44,7 @@ class LoginFormatter(EntryFormatter):
 
     def format(self, entry):
         if 'USER_ID' not in entry:
-            return
+            return ''
 
         self.login[entry['USER_ID']] += 1
         return ''

@@ -154,6 +154,7 @@ class CLI(object):
             log_level = int(PRIORITY_MAP[priority])
             log.debug("priority=%r from args/config", log_level)
 
+        # Build the list of formatters we'll use
         if self.args.cmd == 'debrief':
             formatters = [get_formatter('config')]
         else:
@@ -178,13 +179,15 @@ class CLI(object):
         else:
             inclusions = []
 
+        explicit_inclusions = []
         for formatter in formatters:
             if formatter.FILTER_INCLUSIONS is not None:
-                inclusions.extend(formatter.FILTER_INCLUSIONS)
+                explicit_inclusions.extend(formatter.FILTER_INCLUSIONS)
 
         reader = SelectiveReader(this_boot=self.args.b,
                                  log_level=log_level,
-                                 inclusions=inclusions)
+                                 inclusions=inclusions,
+                                 explicit_inclusions=explicit_inclusions)
         with LatestJournalEntries(cursor_file=cursor_file,
                                   reader=reader,
                                   dry_run=self.args.dry_run,

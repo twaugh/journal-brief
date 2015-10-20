@@ -83,11 +83,8 @@ class TestSelectiveReader(object):
         # Then a log_level() match
         assert watcher.calls[12] == ('log_level', (0,), '{}')
 
-        # And a final disjunction
-        assert watcher.calls[13] == ('add_disjunction', (), '{}')
-
         # No more
-        assert len(watcher.calls) == 14
+        assert len(watcher.calls) == 13
 
     def test_inclusion_log_level(self):
         watcher = self.watch_reader()
@@ -110,9 +107,8 @@ class TestSelectiveReader(object):
             ('log_level', (1,), '{}'),
         ])
 
-        # A final disjunction
-        assert watcher.calls[5] == ('add_disjunction', (), '{}')
-        assert len(watcher.calls) == 6
+        # No more
+        assert len(watcher.calls) == 5
 
     def test_no_inclusions(self):
         watcher = self.watch_reader()

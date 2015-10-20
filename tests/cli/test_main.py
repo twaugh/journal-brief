@@ -27,6 +27,7 @@ import os
 from systemd import journal
 from tempfile import NamedTemporaryFile
 from tests.test_filter import MySpecialFormatter
+import uuid
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -312,8 +313,8 @@ inclusions:
             ('add_match', (), "{'_SYSTEMD_UNIT': 'myservice.service'}"),
         ])
 
-        # And a final disjuction
-        assert watcher.calls[9] == ('add_disjunction', (), '{}')
+        # And nothing else
+        assert len(watcher.calls) == 9
 
     def test_multiple_output_formats(self, capsys):
         entry = {
@@ -354,8 +355,11 @@ cursor-file: {cursor}
         entry = {
             '__CURSOR': '1',
             '__REALTIME_TIMESTAMP': datetime.now(),
-            'TEST': 'test',
-            'MESSAGE': 'message',
+            'PRIORITY': 6,
+            'MESSAGE': 'login session started',
+            'MESSAGE_ID': uuid.UUID('8d45620c1a4348dbb17410da57c60c66'),
+            '_COMM': 'systemd-logind',
+            'USER_ID': 'abc',
         }
 
         (flexmock(journal.Reader, add_match=None, add_disjunction=None)
@@ -370,11 +374,12 @@ cursor-file: {cursor}
 """.format(cursor=cursorfile.name))
                 configfile.flush()
                 cli = CLI(args=['--conf', configfile.name,
-                                '-o', 'test'])
+                                '-p', 'err', '-o', 'login'])
                 cli.run()
 
         (out, err) = capsys.readouterr()
         assert not err
+        assert out
 
     def test_help_output(self, capsys):
         cli = CLI(args=['--help-output'])

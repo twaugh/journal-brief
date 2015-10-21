@@ -17,9 +17,9 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 """
 
 import argparse
-import errno
 import logging
 import os
+import signal
 import sys
 
 from journal_brief import (SelectiveReader,
@@ -203,15 +203,14 @@ class CLI(object):
 
 
 def run():
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
     try:
         CLI().run()
     except KeyboardInterrupt:
         pass
     except IOError as ex:
-        if ex.errno != errno.EPIPE:
-            sys.stderr.write("{0}: {1}\n".format(PACKAGE,
-                                                 os.strerror(ex.errno)))
-
+        sys.stderr.write("{0}: {1}\n".format(PACKAGE,
+                                             os.strerror(ex.errno)))
         sys.exit(1)
     except ConfigError:
         sys.exit(1)

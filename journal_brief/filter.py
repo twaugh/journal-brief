@@ -219,7 +219,6 @@ class JournalFilter(object):
             self.filter_rules[name] = rules
 
     def format(self, stream):
-        do_flush = True
         try:
             for entry in self.iterator:
                 default_excl = None
@@ -248,12 +247,9 @@ class JournalFilter(object):
                         continue
 
                     stream.write(formatter.format(entry) or '')
-        except BrokenPipeError:
-            do_flush = False
         finally:
-            if do_flush:
-                for formatter in self.formatters:
-                    stream.write(formatter.flush() or '')
+            for formatter in self.formatters:
+                stream.write(formatter.flush() or '')
 
     def get_statistics(self):
         """

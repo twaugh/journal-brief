@@ -77,13 +77,9 @@ class FilterRule(dict):
 
     def matches(self, entry):
         for field, matches in self.items():
-            is_match = False
-            for index, match in enumerate(matches):
-                if self.value_matches(field, index, match, entry.get(field)):
-                    is_match = True
-                    break
-
-            if not is_match:
+            if not any(self.value_matches(field, index, match, entry.get(field))
+                       for index, match in enumerate(matches)):
+                # No match for this field
                 return False
 
         return True

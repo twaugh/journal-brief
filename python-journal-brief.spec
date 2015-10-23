@@ -14,7 +14,6 @@ BuildArch:	noarch
 BuildRequires:	python3-devel
 BuildRequires:	python3-pytest python3-flexmock
 BuildRequires:	python3-PyYAML
-Requires:	systemd-python3
 
 %description
 Python module for examining, bookmarking, and filtering systemd
@@ -24,6 +23,7 @@ journal entries.
 %package -n %{srcname}
 Summary:	Show interesting new systemd journal entries since last run
 Requires:	python3-%{srcname} = %{version}-%{release}
+Requires:	python3-setuptools
 
 %description -n %{srcname}
 Run this from cron to get a daily or hourly briefing of interesting
@@ -32,6 +32,7 @@ new systemd journal entries.
 
 %package -n python3-%{srcname}
 Summary:	%{sum}
+Requires:	systemd-python3
 Recommends:	%{srcname} = %{version}-%{release}
 %{?python_provide:%python_provide python3-%{srcname}}
 

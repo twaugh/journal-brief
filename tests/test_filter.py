@@ -91,6 +91,16 @@ class TestExclusion(object):
                                       'SYSLOG_IDENTIFIER': 'at your peril',
                                       'IGNORE': 'ignore this'})
 
+    def test_regexp(self):
+        exclusion = Exclusion({'MESSAGE': ['/exclude/'],
+                               'FIELD': ['/exclude/']})
+        assert exclusion.matches({'MESSAGE': 'exclude this',
+                                  'FIELD': 'exclude this'})
+        assert not exclusion.matches({'MESSAGE': 'do not exclude',
+                                      'FIELD': 'do not exclude'})
+        assert not exclusion.matches({'MESSAGE': 'exclude',
+                                      'FIELD': 1})
+
     def test_priority(self):
         exclusion = Exclusion({'PRIORITY': 'err'})
         assert exclusion.matches({'PRIORITY': 3})

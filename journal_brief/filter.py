@@ -145,7 +145,11 @@ class Exclusion(FilterRule):
             self.regexp[field][index] = regexp
 
         if regexp is not None:
-            return regexp.match(value)
+            try:
+                return regexp.match(value)
+            except TypeError:
+                # Can't regexp match against a non-string value
+                return False
 
         return super(Exclusion, self).value_matches(field, index, match, value)
 

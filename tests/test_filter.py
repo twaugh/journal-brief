@@ -30,6 +30,44 @@ import yaml
 logging.basicConfig(level=logging.DEBUG)
 
 
+class TestFilterProfile(object):
+    def test_inclusion(self, benchmark):
+        matches = ['never matched {0}'.format(n) for n in range(100)]
+        rule = {'MESSAGE': matches}
+        for x in range(100):
+            rule['FIELD{0}'.format(x)] = 'never matched'
+
+        inclusion = Inclusion(rule)
+
+        entry = {
+            'MESSAGE': 'message',
+            '__CURSOR': '1',
+        }
+
+        for x in range(100):
+            entry['FIELD{0}'.format(x)] = x
+
+        assert not benchmark(inclusion.matches, entry)
+
+    def test_exclusion(self, benchmark):
+        matches = ['never matched {0}'.format(n) for n in range(100)]
+        rule = {'MESSAGE': matches}
+        for x in range(100):
+            rule['FIELD{0}'.format(x)] = '/never matched/'
+
+        exclusion = Exclusion(rule)
+
+        entry = {
+            'MESSAGE': 'message',
+            '__CURSOR': '1',
+        }
+
+        for x in range(100):
+            entry['FIELD{0}'.format(x)] = x
+
+        assert not benchmark(exclusion.matches, entry)
+
+
 class TestInclusion(object):
     def test_and(self):
         inclusion = Inclusion({'MESSAGE': ['include this'],

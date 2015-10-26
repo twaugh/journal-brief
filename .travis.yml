@@ -5,7 +5,8 @@ install:
   - pip install PyYAML
   - pip install flexmock
   - pip install pytest-cov coveralls
-script: py.test -vv tests --cov journal_brief
+  - pip install -r tests/requirements.txt
+script: py.test -vv tests --cov journal_brief --benchmark-skip
 sudo: false
 notifications:
   email: false

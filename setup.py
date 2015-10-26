@@ -18,6 +18,26 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 """
 
 from setuptools import setup, find_packages
+from setuptools.command.test import test as TestCommand
+import sys
+
+
+class PyTest(TestCommand):
+    user_options = [('pytest-args=', 'a', 'Arguments to pass to py.test')]
+
+    def initialize_options(self):
+        TestCommand.initialize_options(self)
+        self.pytest_args = []
+
+    def finalize_options(self):
+        TestCommand.finalize_options(self)
+        self.test_args = []
+        self.test_suite = True
+
+    def run_tests(self):
+        import pytest
+        errno = pytest.main(self.pytest_args)
+        sys.exit(errno)
 
 
 long_description="""
@@ -52,6 +72,8 @@ setup(
         'console_scripts': ['journal-brief=journal_brief.cli.main:run'],
     },
     install_requires=['PyYAML'],
+    tests_require=['pytest'],
+    cmdclass = {'test': PyTest},
     packages=find_packages(exclude=['tests',
                                     'tests.cli',
                                     'tests.missing',

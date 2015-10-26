@@ -23,13 +23,24 @@ from journal_brief import JournalFilter
 from journal_brief.filter import Inclusion, Exclusion
 from journal_brief.format import EntryFormatter
 import logging
+import pytest
 from systemd import journal
 import yaml
+
+try:
+    import pytest_benchmark
+except ImportError:
+    HAVE_BENCHMARK = False
+else:
+    HAVE_BENCHMARK = True
+    del pytest_benchmark
 
 
 logging.basicConfig(level=logging.DEBUG)
 
 
+@pytest.mark.skipif(not HAVE_BENCHMARK,
+                    reason="install pytest-benchmark to run this test")
 class TestFilterProfile(object):
     def test_inclusion(self, benchmark):
         matches = ['never matched {0}'.format(n) for n in range(100)]

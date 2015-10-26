@@ -6,7 +6,7 @@ install:
   - pip install flexmock
   - pip install pytest-cov coveralls
   - pip install -r tests/requirements.txt
-script: py.test -vv tests --cov journal_brief --benchmark-skip
+script: py.test -vv -rs tests --cov journal_brief --benchmark-skip
 sudo: false
 notifications:
   email: false

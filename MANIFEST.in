@@ -1,3 +1,4 @@
+include conftest.py
 include setup.py
 include setup.cfg
 include LICENSE

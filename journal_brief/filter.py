@@ -88,6 +88,17 @@ class FilterRule(dict):
 class Inclusion(FilterRule):
     """
     Filter rule for including entries
+
+    Initialise it with a mapping of field names to possible values.
+
+      >>> rule = {'FIELD': ['VALUE'], 'FIELD1': ['VALUE1', 'VALUE2']}
+      >>> incl = Inclusion(rule)
+
+    All fields must match one of their possible values.
+
+      >>> assert not incl.matches({'FIELD': 'VALUE'})
+      >>> assert incl.matches({'FIELD': 'VALUE', 'FIELD1': 'VALUE1'})
+      >>> assert incl.matches({'FIELD': 'VALUE', 'FIELD1': 'VALUE2'})
     """
 
     def __repr__(self):
@@ -97,6 +108,26 @@ class Inclusion(FilterRule):
 class Exclusion(FilterRule):
     """
     Filter rule for excluding entries
+
+    Initialise it with a mapping of field names to possible values.
+
+      >>> rule = {'FIELD': ['VALUE'], 'FIELD1': ['VALUE1', 'VALUE2']}
+      >>> excl = Exclusion(rule)
+
+    All fields must match one of their possible values.
+
+      >>> assert not excl.matches({'FIELD': 'VALUE'})
+      >>> assert excl.matches({'FIELD': 'VALUE', 'FIELD1': 'VALUE1'})
+      >>> assert excl.matches({'FIELD': 'VALUE', 'FIELD1': 'VALUE2'})
+
+    Regular expressions are allowed.
+
+      >>> excl = Exclusion({'MESSAGE': ['/exclude/']})
+      >>> assert excl.matches({'MESSAGE': 'exclude this'})
+
+    Regular expressions are matched at the beginning of the string.
+
+      >>> assert not excl.matches({'MESSAGE': "don't exclude this"})
     """
 
     def __init__(self, mapping, comment=None):
@@ -163,7 +194,8 @@ class Exclusion(FilterRule):
 
 
 class JournalFilter(object):
-    """Apply filter rules to journal entries for a list of formatters
+    """
+    Apply filter rules to journal entries for a list of formatters
 
     Provide a list of default filter rules for inclusion and
     exclusion. Each filter rule is a dict whose keys are fields which
@@ -176,7 +208,6 @@ class JournalFilter(object):
     beginning and end of the match string. Regular expressions are
     matched at the start of the journal field value (i.e. it's a match
     not a search).
-
     """
 
     def __init__(self,

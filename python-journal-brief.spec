@@ -53,7 +53,8 @@ journal entries.
 
 
 %check
-py.test-3.4 -v
+PYTEST_ARGS='-v --doctest-modules tests journal_brief'
+%{__python3} %{py_setup} test --pytest-args="$PYTEST_ARGS"
 
 
 %files -n %{srcname}

@@ -34,6 +34,7 @@ import journal_brief.format.short
 import journal_brief.format.json
 import journal_brief.format.reboot
 import journal_brief.format.login
+import journal_brief.format.systemd
 
 
 log = logging.getLogger('cli')

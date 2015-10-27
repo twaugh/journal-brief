@@ -48,4 +48,5 @@ class Reader(Iterator):
 
 
 class Monotonic(object):
-    pass
+    def __init__(self, init_tuple):
+        self.timestamp = init_tuple[0]

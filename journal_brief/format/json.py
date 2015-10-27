@@ -41,18 +41,18 @@ class JSONEntryFormatter(EntryFormatter):
             if isinstance(value, uuid.UUID):
                 log.debug("Converting %s", field)
                 value = str(value)
-            elif isinstance(value, datetime.timedelta):
-                log.debug("Converting %s", field)
-                value = value.total_seconds()
             elif isinstance(value, datetime.datetime):
                 log.debug("Converting %s", field)
-                value = value.strftime("%c")
+                value = value.timestamp() * 1000000  # microseconds
             elif isinstance(value, journal.Monotonic):
                 log.debug("Converting %s", field)
-                value = value.timestamp.total_seconds()
+                value = value.timestamp.microseconds
             elif isinstance(value, bytes):
                 log.debug("Converting %s", field)
-                value = value.decode()
+                try:
+                    value = value.decode()
+                except UnicodeDecodeError:
+                    value = [int(byte) for byte in value]
 
             serializable[field] = value
 

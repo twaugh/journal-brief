@@ -77,47 +77,50 @@ class SelectiveReader(journal.Reader):
 
         log.debug("no more inclusion filters")
 
+    def process_rule(self, rule, this_boot):
+        assert isinstance(rule.inclusion, dict)
+        for field, matches in rule.inclusion.items():
+            if field == 'PRIORITY':
+                try:
+                    this_log_level = int(PRIORITY_MAP[matches])
+                except (AttributeError, TypeError):
+                    pass
+                else:
+                    # These are equivalent:
+                    # - PRIORITY: 3
+                    # - PRIORITY: err
+                    # - PRIORITY: [0, 1, 2, 3]
+                    # - PRIORITY: [emerg, alert, crit, err]
+                    log.debug("log_level(%r)", this_log_level)
+                    self.log_level(this_log_level)
+                    continue
+
+            assert isinstance(matches, list)
+            for match in matches:
+                if field == 'PRIORITY':
+                    try:
+                        match = PRIORITY_MAP[match]
+                    except (AttributeError, TypeError):
+                        pass
+
+                log.debug("%s=%s", field, match)
+                self.add_match(**{str(field): str(match)})
+
+        if this_boot:
+            log.debug("this_boot()")
+            self.this_boot()
+
+        if rule.log_level is not None:
+            log.debug("log_level(%r)", rule.log_level)
+            self.log_level(rule.log_level)
+
     def set_filter_rules(self, rules, this_boot=None):
         for index, rule in enumerate(rules):
             if index:
                 log.debug("-or-")
                 self.add_disjunction()
 
-            assert isinstance(rule.inclusion, dict)
-            for field, matches in rule.inclusion.items():
-                if field == 'PRIORITY':
-                    try:
-                        this_log_level = int(PRIORITY_MAP[matches])
-                    except (AttributeError, TypeError):
-                        pass
-                    else:
-                        # These are equivalent:
-                        # - PRIORITY: 3
-                        # - PRIORITY: err
-                        # - PRIORITY: [0, 1, 2, 3]
-                        # - PRIORITY: [emerg, alert, crit, err]
-                        log.debug("log_level(%r)", this_log_level)
-                        self.log_level(this_log_level)
-                        continue
-
-                assert isinstance(matches, list)
-                for match in matches:
-                    if field == 'PRIORITY':
-                        try:
-                            match = PRIORITY_MAP[match]
-                        except (AttributeError, TypeError):
-                            pass
-
-                    log.debug("%s=%s", field, match)
-                    self.add_match(**{str(field): str(match)})
-
-            if this_boot:
-                log.debug("this_boot()")
-                self.this_boot()
-
-            if rule.log_level is not None:
-                log.debug("log_level(%r)", rule.log_level)
-                self.log_level(rule.log_level)
+            self.process_rule(rule, this_boot)
 
 
 class LatestJournalEntries(Iterator):

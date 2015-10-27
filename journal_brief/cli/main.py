@@ -73,6 +73,10 @@ class CLI(object):
         config = Config(config_file=self.args.conf)
         self.config = InstanceConfig(config, self.args)
 
+        self.default_output_format = 'reboot,short'
+        self.cursor_file = None
+        self.log_level = None
+
     @staticmethod
     def get_args(args):
         description = 'Show new journal entries since last run'
@@ -112,61 +116,92 @@ class CLI(object):
             print(strf.format(FREQ=stat.hits,
                               EXCLUSION=repr(dict(stat.exclusion))))
 
-    def run(self):
-        default_output_format = 'reboot,short'
+    def show_output_help(self):
+        """
+        Respond to --help-output
+        """
+
+        print("Available output formats:")
+        for output in list_formatters():
+            print("\n{0}:".format(output))
+            formatter = get_formatter(output)
+            docstring = [line.strip()
+                         for line in formatter.__doc__.splitlines()]
+            while docstring and not docstring[0]:
+                del docstring[0]
+            while docstring and not docstring[-1]:
+                del docstring[-1]
+            print('\n'.join(['    ' + line for line in docstring]))
+
+        print("\nMultiple output formats can be used at the same time.")
+        print("The default is '{0}'".format(self.default_output_format))
+
+    def reset(self):
+        """
+        Remove the cursor file
+        """
+
+        log.debug('reset: removing %r', self.cursor_file)
+        try:
+            os.unlink(self.cursor_file)
+        except IOError:
+            pass
+
+    def handle_options(self):
+        """
+        Deal with options and sub-commands
+
+        :return: bool, whether to exit
+        """
 
         if self.args.help_output:
-            print("Available output formats:")
-            for output in list_formatters():
-                print("\n{0}:".format(output))
-                formatter = get_formatter(output)
-                docstring = [line.strip()
-                             for line in formatter.__doc__.splitlines()]
-                while docstring and not docstring[0]:
-                    del docstring[0]
-                while docstring and not docstring[-1]:
-                    del docstring[-1]
-                print('\n'.join(['    ' + line for line in docstring]))
-
-            print("\nMultiple output formats can be used at the same time.")
-            print("The default is '{0}'".format(default_output_format))
-            return
+            self.show_output_help()
+            return True
 
         if self.config.get('debug'):
             logging.basicConfig(level=logging.DEBUG)
 
-        cursor_file = self.config.get('cursor-file')
-        if not cursor_file.startswith('/'):
-            cursor_file = os.path.join(CONFIG_DIR, cursor_file)
+        self.cursor_file = self.config.get('cursor-file')
+        if not self.cursor_file.startswith('/'):
+            self.cursor_file = os.path.join(CONFIG_DIR, self.cursor_file)
 
-        log.debug("cursor-file=%r", cursor_file)
+        log.debug("cursor-file=%r", self.cursor_file)
         if self.args.cmd == 'reset':
-            log.debug('reset: removing %r', cursor_file)
-            try:
-                os.unlink(cursor_file)
-            except IOError:
-                pass
+            self.reset()
+            return True
 
-            return
-
-        log_level = None
         priority = self.config.get('priority')
         if priority:
-            log_level = int(PRIORITY_MAP[priority])
-            log.debug("priority=%r from args/config", log_level)
+            self.log_level = int(PRIORITY_MAP[priority])
+            log.debug("priority=%r from args/config", self.log_level)
 
-        # Build the list of formatters we'll use
+        return False
+
+    def get_formatters(self):
+        """
+        Build the list of formatters we'll use
+
+        :return: list, EntryFormatter instances
+        """
         if self.args.cmd == 'debrief':
             formatters = [get_formatter('config')]
         else:
             outputs = self.config.get('output',
-                                      default_output_format).split(',')
+                                      self.default_output_format).split(',')
             try:
                 formatters = [get_formatter(output) for output in outputs]
             except KeyError as ex:
                 sys.stderr.write("{0}: invalid output format '{1}'\n"
                                  .format(PACKAGE, ex.args[0]))
                 sys.exit(1)
+
+        return formatters
+
+    def run(self):
+        if self.handle_options():
+            return
+
+        formatters = self.get_formatters()
 
         if any(formatter.FILTER_INCLUSIONS is None
                for formatter in formatters):
@@ -186,10 +221,10 @@ class CLI(object):
                 explicit_inclusions.extend(formatter.FILTER_INCLUSIONS)
 
         reader = SelectiveReader(this_boot=self.args.b,
-                                 log_level=log_level,
+                                 log_level=self.log_level,
                                  inclusions=inclusions,
                                  explicit_inclusions=explicit_inclusions)
-        with LatestJournalEntries(cursor_file=cursor_file,
+        with LatestJournalEntries(cursor_file=self.cursor_file,
                                   reader=reader,
                                   dry_run=self.args.dry_run,
                                   seek_cursor=not self.args.b) as entries:

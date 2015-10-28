@@ -21,4 +21,10 @@ from journal_brief.filter import JournalFilter
 from journal_brief.format import list_formatters, get_formatter
 from journal_brief.config import Config
 
+
+__all__ = ['SelectiveReader', 'LatestJournalEntries',
+           'JournalFilter',
+           'list_formatters', 'get_formatter',
+           'Config']
+
 __version__ = '1.1.1'  # also update setup.py

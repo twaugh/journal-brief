@@ -20,13 +20,12 @@ from datetime import datetime
 from flexmock import flexmock
 from tests.util import Watcher
 from journal_brief.cli.main import CLI
-from journal_brief.filter import JournalFilter
 import json
 import logging
 import os
 from systemd import journal
 from tempfile import NamedTemporaryFile
-from tests.test_filter import MySpecialFormatter
+from tests.test_filter import MySpecialFormatter  # registers class; # noqa
 import uuid
 
 

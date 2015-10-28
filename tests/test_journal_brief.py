@@ -16,7 +16,6 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 ## Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 """
 
-from datetime import datetime, timezone, timedelta
 from flexmock import flexmock
 from inspect import getsourcefile
 from tests.util import Watcher
@@ -24,7 +23,6 @@ import journal_brief
 from journal_brief import SelectiveReader, LatestJournalEntries
 from systemd import journal
 import os
-import pytest
 import re
 
 

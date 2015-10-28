@@ -16,13 +16,14 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 ## Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 """
 
-import tests.util
+from tests.util import maybe_mock_systemd
+maybe_mock_systemd()
+
 from journal_brief.config import Config, ConfigError
 import logging
 import os
 import pytest
 from tempfile import NamedTemporaryFile
-import yaml
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -30,7 +31,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 class TestConfig(object):
     def test_no_config_file(self, tmpdir):
-        cfg = Config(config_file=os.path.join(str(tmpdir), 'nonexistent'))
+        Config(config_file=os.path.join(str(tmpdir), 'nonexistent'))
 
     @pytest.mark.parametrize('badyaml', [
         """
@@ -44,7 +45,7 @@ exclusions
             cfp.flush()
             with pytest.raises(ConfigError):
                 try:
-                    cfg = Config(config_file=cfp.name)
+                    Config(config_file=cfp.name)
                 except ConfigError as ex:
                     # Test the exception can be represented as a string
                     str(ex)
@@ -73,7 +74,7 @@ debug: [1]
             cfp.flush()
             with pytest.raises(ConfigError):
                 try:
-                    cfg = Config(config_file=cfp.name)
+                    Config(config_file=cfp.name)
                 except ConfigError as ex:
                     # Test the exception can be represented as a string
                     str(ex)
@@ -120,11 +121,11 @@ debug: [1]
             cfp.write(badconfig.format(key=key).strip())
             cfp.flush()
             with pytest.raises(ConfigError):
-                cfg = Config(config_file=cfp.name)
+                Config(config_file=cfp.name)
 
             # Test the exception can be represented as a string
             try:
-                cfg = Config(config_file=cfp.name)
+                Config(config_file=cfp.name)
             except ConfigError as ex:
                 str(ex)
 
@@ -140,7 +141,7 @@ exclusions:
             cfp.flush()
             with pytest.raises(ConfigError):
                 try:
-                    cfg = Config(config_file=cfp.name)
+                    Config(config_file=cfp.name)
                 except ConfigError as ex:
                     # Test the exception can be represented as a string
                     str(ex)
@@ -153,4 +154,4 @@ exclusions:
         with NamedTemporaryFile(mode='wt') as cfp:
             cfp.write(goodconfig.strip())
             cfp.flush()
-            cfg = Config(config_file=cfp.name)
+            Config(config_file=cfp.name)

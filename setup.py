@@ -40,7 +40,7 @@ class PyTest(TestCommand):
         sys.exit(errno)
 
 
-long_description="""
+long_description = """
 This can be run from cron to get a daily or hourly
 briefing of interesting new systemd journal entries.
 
@@ -73,7 +73,7 @@ setup(
     },
     install_requires=['PyYAML'],
     tests_require=['pytest'],
-    cmdclass = {'test': PyTest},
+    cmdclass={'test': PyTest},
     packages=find_packages(exclude=['tests',
                                     'tests.cli',
                                     'tests.missing',
@@ -81,4 +81,3 @@ setup(
                                     'tests.missing.systemd.journal']),
     package_data={'': ['conf/journal-brief.conf']},
 )
-

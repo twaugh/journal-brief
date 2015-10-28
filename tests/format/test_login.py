@@ -17,8 +17,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 """
 
 from journal_brief.format import get_formatter
-import journal_brief.format.login
-import pytest
+import journal_brief.format.login  # registers class; # flake8: noqa
 from uuid import UUID
 
 

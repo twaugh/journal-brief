@@ -27,10 +27,12 @@ def mock_systemd():
     mock_path = getsourcefile(tests.missing)
     sys.path.append(os.path.dirname(mock_path))
 
-try:
-    from systemd import journal
-except ImportError:
-    mock_systemd()
+
+def maybe_mock_systemd():
+    try:
+        from systemd import journal  # flake8: noqa
+    except ImportError:
+        mock_systemd()
 
 
 class Watcher(object):

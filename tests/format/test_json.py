@@ -19,12 +19,15 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 from datetime import datetime, timezone, timedelta
 from io import StringIO
 from journal_brief.format import get_formatter
-import journal_brief.format.json
+import journal_brief.format.json  # registers class; # flake8: noqa
 import json
 import pytest
-import tests.util
-from systemd import journal
 import uuid
+
+from tests.util import maybe_mock_systemd
+maybe_mock_systemd()
+
+from systemd import journal
 
 
 class TestJSONEntryFormatter(object):

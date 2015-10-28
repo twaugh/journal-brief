@@ -45,7 +45,7 @@ class RegisteredFormatter(type):
 
 
 class EntryFormatter(object, metaclass=RegisteredFormatter):
-    ### Base class for output format implementations
+    # Base class for output format implementations
 
     # Class docstring is used for help output to describe the output
     # format:

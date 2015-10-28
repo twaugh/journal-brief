@@ -16,7 +16,9 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 ## Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 """
 
-import tests.util
+from tests.util import maybe_mock_systemd
+maybe_mock_systemd()
+
 from journal_brief.format import get_formatter
 from journal_brief.format.config import EntryCounter
 import logging

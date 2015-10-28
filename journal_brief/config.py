@@ -218,6 +218,38 @@ class Config(dict):
         for error in self.find_bad_rules(valid_prios, key):
             yield error
 
+    def priority_rule_is_valid(self, values):
+        try:
+            if isinstance(values, list):
+                valid = all(value in PRIORITY_MAP
+                            for value in values)
+            else:
+                valid = values in PRIORITY_MAP
+        except TypeError:
+            valid = False
+        finally:
+            return valid
+
+    def find_bad_rule_values(self, key, index, field, values):
+        for value in values:
+            if isinstance(value, list) or isinstance(value, dict):
+                yield SemanticError('must be a string', value,
+                                    {key: [{field: values}]},
+                                    index=index)
+                continue
+
+            if (key == 'exclusions' and
+                    isinstance(value, str) and
+                    value.startswith('/') and
+                    value.endswith('/')):
+                try:
+                    # TODO: use this computed value
+                    re.compile(value[1:-1])
+                except sre_constants.error as ex:
+                    yield SemanticError(ex.args[0], value,
+                                        {key: [{field: values}]},
+                                        index=index)
+
     def find_bad_rules(self, valid_prios, key):
         log.debug("%s:", key)
         for index, rule in enumerate(self[key]):
@@ -229,21 +261,12 @@ class Config(dict):
             for field, values in rule.items():
                 log.debug("%s: %r", field, values)
                 if field == 'PRIORITY':
-                    try:
-                        if isinstance(values, list):
-                            valid = all(value in PRIORITY_MAP
-                                        for value in values)
-                        else:
-                            valid = values in PRIORITY_MAP
-                    except TypeError:
-                        valid = False
-                    finally:
-                        if not valid:
-                            message = ('must be list or priority (%s)' %
-                                       valid_prios)
-                            yield SemanticError(message, field,
-                                                {key: [{field: values}]},
-                                                index=index)
+                    if not self.priority_rule_is_valid(values):
+                        message = ('must be list or priority (%s)' %
+                                   valid_prios)
+                        yield SemanticError(message, field,
+                                            {key: [{field: values}]},
+                                            index=index)
 
                     continue
 
@@ -253,22 +276,6 @@ class Config(dict):
                                         index=index)
                     continue
 
-                for value in values:
-                    if (isinstance(value, list) or
-                            isinstance(value, dict)):
-                        yield SemanticError('must be a string', value,
-                                            {key: [{field: values}]},
-                                            index=index)
-                        continue
-
-                    if (key == 'exclusions' and
-                            isinstance(value, str) and
-                            value.startswith('/') and
-                            value.endswith('/')):
-                        try:
-                            # TODO: use this computed value
-                            re.compile(value[1:-1])
-                        except sre_constants.error as ex:
-                            yield SemanticError(ex.args[0], value,
-                                                {key: [{field: values}]},
-                                                index=index)
+                for error in self.find_bad_rule_values(key, index,
+                                                       field, values):
+                    yield error

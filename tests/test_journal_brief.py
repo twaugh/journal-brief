@@ -206,7 +206,15 @@ def test_version():
     """
     this_file = getsourcefile(test_version)
     regexp = re.compile(r"\s+version='([0-9.]+)',  # also update")
-    with open(os.path.join(os.path.dirname(this_file), '../setup.py')) as fp:
+    topdir = os.path.dirname(os.path.dirname(this_file))
+    with open(os.path.join(topdir, 'setup.py')) as fp:
+        matches = map(regexp.match, fp.readlines())
+        matches = [match for match in matches if match]
+        assert len(matches) == 1
+        assert matches[0].groups()[0] == journal_brief.__version__
+
+    regexp = re.compile(r"^Version:\s+([0-9.]+)")
+    with open(os.path.join(topdir, 'python-journal-brief.spec')) as fp:
         matches = map(regexp.match, fp.readlines())
         matches = [match for match in matches if match]
         assert len(matches) == 1

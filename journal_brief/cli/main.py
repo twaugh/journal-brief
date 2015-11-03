@@ -17,6 +17,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 """
 
 import argparse
+from locale import setlocale, LC_ALL
 import logging
 import os
 import signal
@@ -201,6 +202,7 @@ class CLI(object):
         if self.handle_options():
             return
 
+        setlocale(LC_ALL, '')
         formatters = self.get_formatters()
 
         if any(formatter.FILTER_INCLUSIONS is None

@@ -18,6 +18,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
 from collections import defaultdict
 from journal_brief.format import EntryFormatter
+from locale import strxfrm
 
 
 class SystemdFormatter(EntryFormatter):
@@ -55,8 +56,8 @@ class SystemdFormatter(EntryFormatter):
             return ''
 
         ret = '\nFailed systemd units:\n\n'
-        units = list(self.failed.items())
-        units.sort()
+        units = sorted(self.failed.items(),
+                       key=lambda item: strxfrm(item[0]))
         for unit, count in units:
             ret += '{count:>5} x {unit}\n'.format(count=count, unit=unit)
 

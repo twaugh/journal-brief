@@ -18,6 +18,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
 from journal_brief.format import get_formatter
 import journal_brief.format.login  # registers class; # flake8: noqa
+from locale import setlocale, LC_ALL
 from uuid import UUID
 
 
@@ -27,10 +28,11 @@ class TestLoginEntryFormatter(object):
         assert formatter.flush() == ''
 
     def test_login(self):
+        setlocale(LC_ALL, 'en_US.UTF-8')  # check locale-aware sorting
         formatter = get_formatter('login')
         base = formatter.FILTER_INCLUSIONS[0].copy()
         base['MESSAGE_ID'] = [UUID(uuid) for uuid in base['MESSAGE_ID']]
-        for user in ['user1', 'user2', 'user1']:
+        for user in ['user1', 'user2', 'user1', 'User3']:
             entry = base.copy()
             entry['USER_ID'] = user
             assert formatter.format(entry) == ''
@@ -41,4 +43,5 @@ class TestLoginEntryFormatter(object):
             '',
             '    2 x user1',
             '    1 x user2',
+            '    1 x User3',
         ]

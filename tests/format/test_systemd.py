@@ -18,6 +18,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
 from journal_brief.format import get_formatter
 import journal_brief.format.systemd  # registers class; # flake8: noqa
+from locale import setlocale, LC_ALL
 
 
 class TestSystemdEntryFormatter(object):
@@ -26,9 +27,10 @@ class TestSystemdEntryFormatter(object):
         assert formatter.flush() == ''
 
     def test_systemd(self):
+        setlocale(LC_ALL, 'en_US.UTF-8')  # check locale-aware sorting
         formatter = get_formatter('systemd')
         base = formatter.FILTER_INCLUSIONS[0].copy()
-        for unit in ['unit1', 'unit2', 'unit1']:
+        for unit in ['unit1', 'unit2', 'unit1', 'Unit3']:
             entry = base.copy()
             entry.update({
                 'MESSAGE': 'Unit %s.service entered failed state.' % unit,
@@ -42,4 +44,5 @@ class TestSystemdEntryFormatter(object):
             '',
             '    2 x unit1.service',
             '    1 x unit2.service',
+            '    1 x Unit3.service',
         ]

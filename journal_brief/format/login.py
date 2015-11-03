@@ -18,6 +18,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
 from collections import defaultdict
 from journal_brief.format import EntryFormatter
+from locale import strxfrm
 import logging
 
 
@@ -54,8 +55,8 @@ class LoginFormatter(EntryFormatter):
             return ''
 
         ret = '\nUser logins:\n\n'
-        logins = list(self.login.items())
-        logins.sort()
+        logins = sorted(self.login.items(),
+                        key=lambda item: strxfrm(item[0]))
         for user, count in logins:
             ret += '{count:>5} x {user}\n'.format(user=user, count=count)
 

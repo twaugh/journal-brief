@@ -31,6 +31,11 @@ python3 setup.py install
 pip3 install journal-brief
 ```
 
+### On Fedora
+```
+dnf install journal-brief
+```
+
 ## Quick start
 
 One useful feature of journal-brief is that it can generate its own

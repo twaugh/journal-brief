@@ -19,10 +19,6 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 from collections import defaultdict
 from journal_brief.format import EntryFormatter
 from locale import strxfrm
-import logging
-
-
-log = logging.getLogger(__name__)
 
 
 class LoginFormatter(EntryFormatter):

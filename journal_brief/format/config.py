@@ -158,6 +158,7 @@ class Debriefer(EntryFormatter):
         Find the most frequently occurring set of key=value pairs
 
         :param entries: iterable, providing entry dicts
+        :return: list of remaining entries
         """
         if entries is None:
             entries = self.all_entries
@@ -205,10 +206,7 @@ class Debriefer(EntryFormatter):
 
         log.debug("%s entries remaining", len(remaining))
         assert len(remaining) < len(entries)
-        try:
-            return self.get_top(remaining)
-        except StopIteration:
-            return top
+        return remaining
 
     def get_exclusions(self):
         """
@@ -217,9 +215,15 @@ class Debriefer(EntryFormatter):
         :return: list, Exclusion instances
         """
         try:
-            self.get_top()
+            remaining = self.get_top()
         except StopIteration:
             pass
+        else:
+            try:
+                while True:
+                    remaining = self.get_top(remaining)
+            except StopIteration:
+                pass
 
         return self.exclusions
 

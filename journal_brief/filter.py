@@ -34,11 +34,17 @@ ExclusionStatistics = namedtuple('ExclusionStatistics', ['hits', 'exclusion'])
 FilterRules = namedtuple('FilterRules', ['inclusions', 'exclusions'])
 
 
+def coerce_to_UUID(x):
+    if isinstance(x, UUID):
+        return x
+    return UUID(x)
+
+
 DEFAULT_CONVERTERS = journal.DEFAULT_CONVERTERS.copy()
 DEFAULT_CONVERTERS.update({
-    '_BOOT_ID': UUID,
-    '_MACHINE_ID': UUID,
-    'MESSAGE_ID': UUID,
+    '_BOOT_ID': coerce_to_UUID,
+    '_MACHINE_ID': coerce_to_UUID,
+    'MESSAGE_ID': coerce_to_UUID,
 })
 
 
@@ -68,7 +74,15 @@ class FilterRule(dict):
         super(FilterRule, self).__init__(str_mapping)
 
     def __str__(self):
-        return yaml.dump([dict(self)],
+        rdict = {}
+        for field, matches in self.items():
+            if any(isinstance(match, UUID) for match in matches):
+                # Convert UUID to str for representation
+                rdict[field] = [str(match) for match in matches]
+            else:
+                rdict[field] = matches
+
+        return yaml.dump([rdict],
                          indent=2,
                          default_flow_style=False)
 

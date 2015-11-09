@@ -27,4 +27,4 @@ __all__ = ['SelectiveReader', 'LatestJournalEntries',
            'list_formatters', 'get_formatter',
            'Config']
 
-__version__ = '1.1.2'  # also update setup.py and python-journal-brief.spec
+__version__ = '1.1.3'  # also update setup.py and python-journal-brief.spec

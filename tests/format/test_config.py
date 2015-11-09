@@ -22,6 +22,7 @@ maybe_mock_systemd()
 from journal_brief.format import get_formatter
 from journal_brief.format.config import EntryCounter
 import logging
+from uuid import uuid1
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -90,5 +91,18 @@ class TestDebriefer(object):
             "  # 2 occurrences (out of 2)",
             "  - MESSAGE:",
             "    - message 2",
+            ''
+        ])
+
+    def test_uuid(self):
+        dbr = get_formatter('config')
+        message_id = uuid1()
+        formatted = dbr.format({'MESSAGE_ID': message_id})
+        formatted += dbr.flush()
+        assert formatted == '\n'.join([
+            "exclusions:",
+            "  # 1 occurrences (out of 1)",
+            "  - MESSAGE_ID:",
+            "    - {0}".format(str(message_id)),
             ''
         ])

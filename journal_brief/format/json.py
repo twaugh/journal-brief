@@ -47,6 +47,9 @@ class JSONEntryFormatter(EntryFormatter):
             elif isinstance(value, journal.Monotonic):
                 log.debug("Converting %s", field)
                 value = value.timestamp.microseconds
+            elif isinstance(value, datetime.timedelta):
+                log.debug("Converting %s", field)
+                value = value.total_seconds() * 1000000  # microseconds
             elif isinstance(value, bytes):
                 log.debug("Converting %s", field)
                 try:

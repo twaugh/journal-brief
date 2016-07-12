@@ -66,6 +66,20 @@ class TestJSONEntryFormatter(object):
         out = json.loads(formatter.format(entry))
         assert out['__MONOTONIC_TIMESTAMP'] == us
 
+    def test_timedelta(self):
+        """
+        Should be in microseconds
+        """
+
+        sec = 1
+        us = 700
+        mono_ts = timedelta(0, sec, us)
+        entry = {'__MONOTONIC_TIMESTAMP': mono_ts}
+        formatter = get_formatter('json')
+        out = json.loads(formatter.format(entry))
+        diff = out['__MONOTONIC_TIMESTAMP'] - (sec * 1000000 + us)
+        assert diff < 0.001
+
     @pytest.mark.parametrize(('bdata', 'brepr'), [
         (b'abc', 'abc'),
         (b'\x82\xac', [0x82, 0xac]),

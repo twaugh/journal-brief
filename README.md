@@ -115,7 +115,7 @@ exclusions:
     SYSLOG_IDENTIFIER:
       - from here
   - MESSAGE_ID: [c7a787079b354eaaa9e77b371893cd27]
-  - MESSAGE: ["/Normal exit \(.*run\)/"]
+  - MESSAGE: ["/Normal exit (.*run)/"]
 ```
 
 This would cause `journal-brief` to ignore journal entries that
@@ -124,10 +124,11 @@ satisfy both conditions: `SYSLOG_IDENTIFIER` is `from here`, and
 
 It will also ignore any entries with the specified `MESSAGE_ID`.
 
-In addition, any entries whose `MESSAGE` matches the regular
-expression `Normal exit \(.*run\)` will be excluded. Regular
-expressions are indicated with `/` at the beginning and end of the
-match string.
+In addition, any entries whose `MESSAGE` matches the (Python) regular
+expression `Normal exit (.*run)` will be excluded. Regular expressions
+are indicated with `/` at the beginning and end of the match string,
+and are used for matching (not searching) against the field in
+question at the beginning of the field's string value.
 
 The available journal fields are described in the
 systemd.journal-fields(7) manual page.

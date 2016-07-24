@@ -50,7 +50,7 @@ entry is, and exclusion rules can be built automatically.
 
 setup(
     name='journal-brief',
-    version='1.1.3',  # also update journal_brief/__init__.py
+    version='1.1.4',  # also update journal_brief/__init__.py
     description='Show interesting new systemd journal entries since last run',
     long_description=long_description,
     author='Tim Waugh',

@@ -28,4 +28,4 @@ for attr in dir(journal):
         value = getattr(journal, attr)
         svalue = str(value)
         for key in [value, svalue, attr[4:].lower()]:
-            PRIORITY_MAP[key] = svalue
+            PRIORITY_MAP[key] = value

@@ -109,7 +109,8 @@ class TestInclusion(object):
 
     def test_priority(self):
         inclusion = Inclusion({'PRIORITY': 'err'})
-        assert inclusion.matches({'PRIORITY': 3})
+        priority_type = journal.DEFAULT_CONVERTERS.get('PRIORITY', str)
+        assert inclusion.matches({'PRIORITY': priority_type(3)})
 
     def test_repr(self):
         incl = {'MESSAGE': ['include this']}
@@ -154,7 +155,8 @@ class TestExclusion(object):
 
     def test_priority(self):
         exclusion = Exclusion({'PRIORITY': 'err'})
-        assert exclusion.matches({'PRIORITY': 3})
+        priority_type = journal.DEFAULT_CONVERTERS.get('PRIORITY', str)
+        assert exclusion.matches({'PRIORITY': priority_type(3)})
 
     def test_str_without_comment(self):
         excl = {'MESSAGE': ['exclude this']}
@@ -216,10 +218,11 @@ class TestJournalFilter(object):
         assert lines == [entry['MESSAGE'] for entry in entries]
 
     def test_exclusion(self):
+        priority_type = journal.DEFAULT_CONVERTERS.get('PRIORITY', str)
         entries = [{'MESSAGE': 'exclude this',
                     'SYSLOG_IDENTIFIER': 'from here'},
 
-                   {'PRIORITY': '6',
+                   {'PRIORITY': priority_type(6),
                     'MESSAGE': 'exclude this too'},
 
                    {'MESSAGE': 'message 1',

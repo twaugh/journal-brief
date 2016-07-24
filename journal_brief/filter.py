@@ -56,22 +56,23 @@ class FilterRule(dict):
     def __init__(self, mapping):
         assert isinstance(mapping, dict)
 
-        # Make sure everything is interpreted as a string
-        str_mapping = {}
+        # Make sure everything is interpreted as the appropriate type
+        type_mapping = {}
         for field, matches in mapping.items():
+            converter = DEFAULT_CONVERTERS.get(field, str)
             if field == 'PRIORITY':
                 try:
                     level = int(PRIORITY_MAP[matches])
                 except (AttributeError, TypeError):
-                    str_mapping[field] = [PRIORITY_MAP[match]
-                                          for match in matches]
+                    type_mapping[field] = [converter(PRIORITY_MAP[match])
+                                           for match in matches]
                 else:
-                    str_mapping[field] = list(range(level + 1))
+                    type_mapping[field] = [converter(prio)
+                                           for prio in list(range(level + 1))]
             else:
-                converter = DEFAULT_CONVERTERS.get(field, str)
-                str_mapping[field] = [converter(match) for match in matches]
+                type_mapping[field] = [converter(match) for match in matches]
 
-        super(FilterRule, self).__init__(str_mapping)
+        super(FilterRule, self).__init__(type_mapping)
 
     def __str__(self):
         rdict = {}

@@ -2,7 +2,7 @@
 %global sum Find new systemd journal entries since last run
 
 Name:		python-%{srcname}
-Version:	1.1.4
+Version:	1.1.5
 Release:	1%{?dist}
 Summary:	%{sum}
 

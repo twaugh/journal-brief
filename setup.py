@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """
-Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
+Copyright (c) 2015, 2016 Tim Waugh <tim@cyberelk.net>
 
 ## This program is free software; you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -76,6 +76,7 @@ setup(
     cmdclass={'test': PyTest},
     packages=find_packages(exclude=['tests',
                                     'tests.cli',
+                                    'tests.format',
                                     'tests.missing',
                                     'tests.missing.systemd',
                                     'tests.missing.systemd.journal']),

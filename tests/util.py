@@ -30,7 +30,7 @@ def mock_systemd():
 
 def maybe_mock_systemd():
     try:
-        from systemd import journal  # flake8: noqa
+        from systemd import journal  # noqa: F401
     except ImportError:
         mock_systemd()
 

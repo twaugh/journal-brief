@@ -25,7 +25,7 @@ import logging
 import os
 from systemd import journal
 from tempfile import NamedTemporaryFile
-from tests.test_filter import MySpecialFormatter  # registers class; # noqa
+from tests.test_filter import MySpecialFormatter  # registers class; # noqa: F401
 import uuid
 
 

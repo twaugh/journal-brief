@@ -88,6 +88,28 @@ class SemanticError(ConfigError):
         )
 
 
+def load_config(config_file):
+    try:
+        with open(config_file) as config_fp:
+            try:
+                config = yaml.safe_load(config_fp)
+            except yaml.scanner.ScannerError as scanner_error:
+                err = SyntaxError(config_file,
+                                  scanner_error)
+                log.error(err)
+                raise err from scanner_error
+
+        if not config:
+            config = {}
+
+        return config
+    except IOError as ex:
+        if ex.errno != errno.ENOENT:
+            raise
+
+        return {}
+
+
 class Config(dict):
     ALLOWED_KEYWORDS = {
         'cursor-file',
@@ -104,24 +126,7 @@ class Config(dict):
             config_file = os.path.join(CONFIG_DIR, conf_filename)
 
         default_config = {'cursor-file': 'cursor'}
-
-        try:
-            with open(config_file) as config_fp:
-                try:
-                    config = yaml.safe_load(config_fp)
-                except yaml.scanner.ScannerError as scanner_error:
-                    err = SyntaxError(config_file,
-                                      scanner_error)
-                    log.error(err)
-                    raise err from scanner_error
-
-                if not config:
-                    config = {}
-        except IOError as ex:
-            if ex.errno == errno.ENOENT:
-                config = {}
-            else:
-                raise
+        config = load_config(config_file)
 
         if not isinstance(config, dict):
             error = SemanticError('must be a map', 'top level', config)

@@ -1,5 +1,5 @@
 """
-Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
+Copyright (c) 2015, 2020 Tim Waugh <tim@cyberelk.net>
 
 ## This program is free software; you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -77,7 +77,7 @@ class SelectiveReader(journal.Reader):
 
         log.debug("no more inclusion filters")
 
-    def process_rule(self, rule, this_boot):
+    def process_rule(self, rule, this_boot):  # noqa: C901
         assert isinstance(rule.inclusion, dict)
         for field, matches in rule.inclusion.items():
             if field == 'PRIORITY':

@@ -30,12 +30,12 @@ from journal_brief import (SelectiveReader,
                            JournalFilter)
 from journal_brief.config import Config, ConfigError
 from journal_brief.constants import PACKAGE, CONFIG_DIR, PRIORITY_MAP
-import journal_brief.format.config   # registers class; # flake8: noqa
-import journal_brief.format.short    # registers class; # flake8: noqa
-import journal_brief.format.json     # registers class; # flake8: noqa
-import journal_brief.format.reboot   # registers class; # flake8: noqa
-import journal_brief.format.login    # registers class; # flake8: noqa
-import journal_brief.format.systemd  # registers class; # flake8: noqa
+import journal_brief.format.config   # registers class; # noqa: F401
+import journal_brief.format.short    # registers class; # noqa: F401
+import journal_brief.format.json     # registers class; # noqa: F401
+import journal_brief.format.reboot   # registers class; # noqa: F401
+import journal_brief.format.login    # registers class; # noqa: F401
+import journal_brief.format.systemd  # registers class; # noqa: F401
 
 
 log = logging.getLogger('cli')

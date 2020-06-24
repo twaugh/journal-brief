@@ -1,5 +1,5 @@
 """
-Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
+Copyright (c) 2015, 2020 Tim Waugh <tim@cyberelk.net>
 
 ## This program is free software; you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -315,7 +315,7 @@ inclusions:
         # And nothing else
         assert len(watcher.calls) == 9
 
-    def test_multiple_output_formats(self, capsys):
+    def test_multiple_output_formats_cli(self, capsys):
         entry = {
             '__CURSOR': '1',
             '__REALTIME_TIMESTAMP': datetime.now(),
@@ -335,6 +335,41 @@ cursor-file: {cursor}
                 configfile.flush()
                 cli = CLI(args=['--conf', configfile.name,
                                 '-o', 'cat,cat,json'])
+                cli.run()
+
+        (out, err) = capsys.readouterr()
+        assert not err
+        lines = out.splitlines()
+        assert len(lines) == 3
+        assert lines[0] == lines[1] == 'message'
+        output = json.loads(lines[2])
+        del entry['__REALTIME_TIMESTAMP']
+        del output['__REALTIME_TIMESTAMP']
+        assert output == entry
+
+    def test_multiple_output_formats_conf(self, capsys):
+        entry = {
+            '__CURSOR': '1',
+            '__REALTIME_TIMESTAMP': datetime.now(),
+            'MESSAGE': 'message',
+        }
+
+        (flexmock(journal.Reader)
+            .should_receive('get_next')
+            .and_return(entry)
+            .and_return({}))
+
+        with NamedTemporaryFile(mode='rt') as cursorfile:
+            with NamedTemporaryFile(mode='wt') as configfile:
+                configfile.write("""
+output:
+- cat
+- cat
+- json
+cursor-file: {cursor}
+""".format(cursor=cursorfile.name))
+                configfile.flush()
+                cli = CLI(args=['--conf', configfile.name])
                 cli.run()
 
         (out, err) = capsys.readouterr()

@@ -1,5 +1,5 @@
 """
-Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
+Copyright (c) 2015, 2020 Tim Waugh <tim@cyberelk.net>
 
 ## This program is free software; you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -44,6 +44,9 @@ log = logging.getLogger('cli')
 class InstanceConfig(object):
     def __init__(self, config, args):
         self.config = config
+
+        if args.output is not None:
+            args.output = args.output.split(',')
         self.args = args
 
     def get(self, key, default_value=None):
@@ -74,7 +77,7 @@ class CLI(object):
         config = Config(config_file=self.args.conf)
         self.config = InstanceConfig(config, self.args)
 
-        self.default_output_format = 'reboot,short'
+        self.default_output_formats = ['reboot', 'short']
         self.cursor_file = None
         self.log_level = None
 
@@ -135,7 +138,7 @@ class CLI(object):
             print('\n'.join(['    ' + line for line in docstring]))
 
         print("\nMultiple output formats can be used at the same time.")
-        print("The default is '{0}'".format(self.default_output_format))
+        print("The default is '{0}'".format(','.join(self.default_output_formats)))
 
     def reset(self):
         """
@@ -187,8 +190,7 @@ class CLI(object):
         if self.args.cmd == 'debrief':
             formatters = [get_formatter('config')]
         else:
-            outputs = self.config.get('output',
-                                      self.default_output_format).split(',')
+            outputs = self.config.get('output', self.default_output_formats)
             try:
                 formatters = [get_formatter(output) for output in outputs]
             except KeyError as ex:

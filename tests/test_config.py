@@ -1,5 +1,5 @@
 """
-Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
+Copyright (c) 2015, 2020 Tim Waugh <tim@cyberelk.net>
 
 ## This program is free software; you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -147,11 +147,14 @@ exclusions:
                     str(ex)
                     raise
 
-    @pytest.mark.parametrize('goodconfig', [
-        "output: [json-pretty, config]",
+    @pytest.mark.parametrize('goodconfig, num_outputs', [
+        ("output: [json-pretty, config]", 2),
+        ("output: [cat]", 1),
+        ("output: cat", 1),
     ])
-    def test_validation_good(self, goodconfig):
+    def test_validation_good(self, goodconfig, num_outputs):
         with NamedTemporaryFile(mode='wt') as cfp:
             cfp.write(goodconfig.strip())
             cfp.flush()
-            Config(config_file=cfp.name)
+            c = Config(config_file=cfp.name)
+            assert len(c['output']) == num_outputs

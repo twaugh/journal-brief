@@ -1,5 +1,5 @@
 """
-Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
+Copyright (c) 2015, 2020 Tim Waugh <tim@cyberelk.net>
 
 ## This program is free software; you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -190,6 +190,7 @@ class Config(dict):
             outputs = output
         else:
             outputs = [output]
+            self['output'] = outputs
 
         for output in outputs:
             if output not in formatters:

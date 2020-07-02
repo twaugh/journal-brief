@@ -41,6 +41,7 @@ def config_and_cursor(tmp_path):
             configfile.flush()
             yield (configfile, cursorfile)
 
+
 @pytest.fixture
 def missing_or_empty_cursor():
     (flexmock(journal.Reader)
@@ -49,6 +50,7 @@ def missing_or_empty_cursor():
     (flexmock(journal.Reader)
         .should_receive('get_previous')
         .and_return({'__CURSOR': '0'}))
+
 
 class TestCLI(object):
     def test_param_override(self):
@@ -137,7 +139,7 @@ class TestCLI(object):
 
     def test_reset(self, config_and_cursor):
         (configfile, cursorfile) = config_and_cursor
-        with cursorfile: # force the cursorfile context to be exited at the right time
+        with cursorfile:  # force the cursorfile context to be exited at the right time
             cli = CLI(args=['--conf', configfile.name, 'reset'])
             cli.run()
             # Cursor file is deleted

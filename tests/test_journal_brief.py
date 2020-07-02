@@ -127,10 +127,12 @@ class TestSelectiveReader(object):
 def cursor_file_path(tmp_path):
     return os.path.join(str(tmp_path), 'cursor')
 
+
 @pytest.fixture
 def cursor_file(cursor_file_path):
     with open(cursor_file_path, 'w+t') as fp:
         yield fp
+
 
 @pytest.fixture
 def missing_or_empty_cursor():
@@ -140,6 +142,7 @@ def missing_or_empty_cursor():
     (flexmock(journal.Reader)
         .should_receive('get_previous')
         .and_return({'__CURSOR': '0'}))
+
 
 class TestLatestJournalEntries(object):
     def test_without_cursor(self, cursor_file_path, missing_or_empty_cursor):

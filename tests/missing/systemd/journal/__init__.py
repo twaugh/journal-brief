@@ -21,6 +21,9 @@ class Reader(Iterator):
     def get_next(self):
         raise RuntimeError
 
+    def get_previous(self):
+        return {'__CURSOR': '0'}
+
     def __next__(self):
         entry = self.get_next()
         if not entry:
@@ -46,6 +49,11 @@ class Reader(Iterator):
     def seek_cursor(self, cursor):
         raise RuntimeError
 
+    def seek_tail(self):
+        pass
+
+    def close(self):
+        pass
 
 class Monotonic(object):
     def __init__(self, init_tuple):

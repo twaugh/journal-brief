@@ -153,10 +153,26 @@ class LatestJournalEntries(Iterator):
         if reader is None:
             reader = journal.Reader()
 
-        if seek_cursor and self.cursor:
-            log.debug("Seeking to %s", self.cursor)
-            reader.seek_cursor(self.cursor)
-            reader.get_next()
+        if self.cursor:
+            if seek_cursor:
+                log.debug("Seeking to %s", self.cursor)
+                reader.seek_cursor(self.cursor)
+                reader.get_next()
+        elif not dry_run:
+            # use an unfiltered Reader to find the current 'tail'
+            # of the journal and store that as the initial cursor
+            # when the cursor file could not be found; this avoids
+            # reading through the entire journal again on the next
+            # run if the inclusions and exclusions result in zero
+            # matching entries during this run
+            temp_reader = journal.Reader()
+            temp_reader.seek_tail()
+            fields = temp_reader.get_previous()
+            if fields:
+                self.cursor = fields['__CURSOR']
+            else:
+                self.cursor = ''
+            temp_reader.close()
 
         self.reader = reader
         self.dry_run = dry_run

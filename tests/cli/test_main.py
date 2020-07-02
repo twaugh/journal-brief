@@ -23,6 +23,7 @@ from journal_brief.cli.main import CLI
 import json
 import logging
 import os
+import pytest
 from systemd import journal
 from tempfile import NamedTemporaryFile
 from tests.test_filter import MySpecialFormatter  # registers class; # noqa: F401
@@ -31,6 +32,23 @@ import uuid
 
 logging.basicConfig(level=logging.DEBUG)
 
+
+@pytest.fixture
+def config_and_cursor(tmp_path):
+    with NamedTemporaryFile(mode='wt', dir=tmp_path) as configfile:
+        with NamedTemporaryFile(mode='w+t', dir=tmp_path) as cursorfile:
+            configfile.write('cursor-file: {0}\n'.format(cursorfile.name))
+            configfile.flush()
+            yield (configfile, cursorfile)
+
+@pytest.fixture
+def missing_or_empty_cursor():
+    (flexmock(journal.Reader)
+        .should_receive('seek_tail')
+        .once())
+    (flexmock(journal.Reader)
+        .should_receive('get_previous')
+        .and_return({'__CURSOR': '0'}))
 
 class TestCLI(object):
     def test_param_override(self):
@@ -50,7 +68,7 @@ class TestCLI(object):
                             '-p', 'debug'])
             assert cli.config.get('priority') == 'debug'
 
-    def test_normal_run(self, capsys):
+    def test_normal_run(self, capsys, config_and_cursor, missing_or_empty_cursor):
         (flexmock(journal.Reader, add_match=None, add_disjunction=None)
             .should_receive('get_next')
             .and_return({'__CURSOR': '1',
@@ -61,18 +79,15 @@ class TestCLI(object):
                          'MESSAGE': 'message2'})
             .and_return({}))
 
-        with NamedTemporaryFile(mode='wt') as configfile:
-            with NamedTemporaryFile(mode='rt') as cursorfile:
-                configfile.write('cursor-file: {0}\n'.format(cursorfile.name))
-                configfile.flush()
-                cli = CLI(args=['--conf', configfile.name])
-                cli.run()
+        (configfile, cursorfile) = config_and_cursor
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
 
         (out, err) = capsys.readouterr()
         assert not err
         assert len(out.splitlines()) == 2
 
-    def test_dry_run(self):
+    def test_dry_run(self, config_and_cursor):
         (flexmock(journal.Reader, add_match=None, add_disjunction=None)
             .should_receive('get_next')
             .and_return({'__CURSOR': '1',
@@ -80,15 +95,12 @@ class TestCLI(object):
                          'MESSAGE': 'message'})
             .and_return({}))
 
-        with NamedTemporaryFile(mode='wt') as configfile:
-            with NamedTemporaryFile(mode='rt') as cursorfile:
-                configfile.write('cursor-file: {0}\n'.format(cursorfile.name))
-                configfile.flush()
-                cli = CLI(args=['--conf', configfile.name, '--dry-run'])
-                cli.run()
-                assert not cursorfile.read()
+        (configfile, cursorfile) = config_and_cursor
+        cli = CLI(args=['--conf', configfile.name, '--dry-run'])
+        cli.run()
+        assert not cursorfile.read()
 
-    def test_this_boot(self):
+    def test_this_boot(self, config_and_cursor):
         final_cursor = '1'
         flexmock(journal.Reader, add_match=None, add_disjunction=None)
         (flexmock(journal.Reader)
@@ -101,18 +113,15 @@ class TestCLI(object):
                          'MESSAGE': 'message'})
             .and_return({}))
 
-        with NamedTemporaryFile(mode='wt') as configfile:
-            with NamedTemporaryFile(mode='w+t') as cursorfile:
-                configfile.write('cursor-file: {0}\n'.format(cursorfile.name))
-                configfile.flush()
-                cursorfile.write(final_cursor)
-                cursorfile.flush()
-                cli = CLI(args=['--conf', configfile.name, '-b'])
-                cli.run()
-                cursorfile.seek(0)
-                assert cursorfile.read() == final_cursor
+        (configfile, cursorfile) = config_and_cursor
+        cursorfile.write(final_cursor)
+        cursorfile.flush()
+        cli = CLI(args=['--conf', configfile.name, '-b'])
+        cli.run()
+        cursorfile.seek(0)
+        assert cursorfile.read() == final_cursor
 
-    def test_log_level(self):
+    def test_log_level(self, config_and_cursor, missing_or_empty_cursor):
         flexmock(journal.Reader, add_match=None, add_disjunction=None)
         (flexmock(journal.Reader)
             .should_receive('log_level')
@@ -122,30 +131,25 @@ class TestCLI(object):
             .should_receive('get_next')
             .and_return({}))
 
-        with NamedTemporaryFile(mode='wt') as configfile:
-            with NamedTemporaryFile(mode='rt') as cursorfile:
-                configfile.write('cursor-file: {0}\n'.format(cursorfile.name))
-                configfile.flush()
-                cli = CLI(args=['--conf', configfile.name, '-p', 'err'])
-                cli.run()
+        (configfile, cursorfile) = config_and_cursor
+        cli = CLI(args=['--conf', configfile.name, '-p', 'err'])
+        cli.run()
 
-    def test_reset(self):
-        with NamedTemporaryFile(mode='wt') as configfile:
-            with NamedTemporaryFile(mode='rt') as cursorfile:
-                configfile.write('cursor-file: {0}\n'.format(cursorfile.name))
-                configfile.flush()
-                cli = CLI(args=['--conf', configfile.name, 'reset'])
-                cli.run()
-                # Cursor file is deleted
-                assert not os.access(cursorfile.name, os.F_OK)
-                open(cursorfile.name, mode='w').close()
-
-            # No errors when the cursor file doesn't exist
+    def test_reset(self, config_and_cursor):
+        (configfile, cursorfile) = config_and_cursor
+        with cursorfile: # force the cursorfile context to be exited at the right time
             cli = CLI(args=['--conf', configfile.name, 'reset'])
             cli.run()
+            # Cursor file is deleted
             assert not os.access(cursorfile.name, os.F_OK)
+            open(cursorfile.name, mode='w').close()
 
-    def test_stats(self, capsys):
+        # No errors when the cursor file doesn't exist
+        cli = CLI(args=['--conf', configfile.name, 'reset'])
+        cli.run()
+        assert not os.access(cursorfile.name, os.F_OK)
+
+    def test_stats(self, capsys, config_and_cursor, missing_or_empty_cursor):
         (flexmock(journal.Reader, add_match=None, add_disjunction=None)
             .should_receive('get_next')
             .and_return({'__CURSOR': '1',
@@ -156,16 +160,14 @@ class TestCLI(object):
                          'MESSAGE': 'include'})
             .and_return({}))
 
-        with NamedTemporaryFile(mode='rt') as cursorfile:
-            with NamedTemporaryFile(mode='wt') as configfile:
-                configfile.write("""
-cursor-file: {cursor}
+        (configfile, cursorfile) = config_and_cursor
+        configfile.write("""
 exclusions:
 - MESSAGE: [exclude]
-""".format(cursor=cursorfile.name))
-                configfile.flush()
-                cli = CLI(args=['--conf', configfile.name, 'stats'])
-                cli.run()
+""")
+        configfile.flush()
+        cli = CLI(args=['--conf', configfile.name, 'stats'])
+        cli.run()
 
         (out, err) = capsys.readouterr()
         assert not err
@@ -173,7 +175,7 @@ exclusions:
                                  "         1  {'MESSAGE': ['exclude']}",
                                  ""])
 
-    def test_debrief(self, capsys):
+    def test_debrief(self, capsys, config_and_cursor, missing_or_empty_cursor):
         entries = [
             {'__CURSOR': '1',
              'MESSAGE': 'message 1',
@@ -204,12 +206,9 @@ exclusions:
 
         expectation.and_return({})
 
-        with NamedTemporaryFile(mode='rt') as cursorfile:
-            with NamedTemporaryFile(mode='wt') as configfile:
-                configfile.write("cursor-file: {0}".format(cursorfile.name))
-                configfile.flush()
-                cli = CLI(args=['--conf', configfile.name, 'debrief'])
-                cli.run()
+        (configfile, cursorfile) = config_and_cursor
+        cli = CLI(args=['--conf', configfile.name, 'debrief'])
+        cli.run()
 
         (out, err) = capsys.readouterr()
         assert not err
@@ -223,7 +222,7 @@ exclusions:
             "    - message 2",
             ''])
 
-    def test_debrief_no_input(self, capsys):
+    def test_debrief_no_input(self, capsys, config_and_cursor, missing_or_empty_cursor):
         """
         Check it handles there being no input
         """
@@ -231,18 +230,15 @@ exclusions:
             .should_receive('get_next')
             .and_return({}))
 
-        with NamedTemporaryFile(mode='rt') as cursorfile:
-            with NamedTemporaryFile(mode='wt') as configfile:
-                configfile.write("cursor-file: {0}".format(cursorfile.name))
-                configfile.flush()
-                cli = CLI(args=['--conf', configfile.name, 'debrief'])
-                cli.run()
+        (configfile, cursorfile) = config_and_cursor
+        cli = CLI(args=['--conf', configfile.name, 'debrief'])
+        cli.run()
 
         (out, err) = capsys.readouterr()
         assert not err
         assert not out
 
-    def test_exclusions_yaml(self, capsys):
+    def test_exclusions_yaml(self, capsys, config_and_cursor, missing_or_empty_cursor):
         (flexmock(journal.Reader, add_match=None, add_disjunction=None)
             .should_receive('get_next')
             .and_return({'__CURSOR': '1',
@@ -250,22 +246,20 @@ exclusions:
                          'MESSAGE': 'message'})
             .and_return({}))
 
-        with NamedTemporaryFile(mode='rt') as cursorfile:
-            with NamedTemporaryFile(mode='wt') as configfile:
-                configfile.write("""
-cursor-file: {cursor}
+        (configfile, cursorfile) = config_and_cursor
+        configfile.write("""
 exclusions:
 - MESSAGE: [1]
-""".format(cursor=cursorfile.name))
-                configfile.flush()
-                cli = CLI(args=['--conf', configfile.name])
-                cli.run()
+""")
+        configfile.flush()
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
 
         (out, err) = capsys.readouterr()
         assert not err
         assert 'message' in out
 
-    def test_inclusions_yaml(self):
+    def test_inclusions_yaml(self, config_and_cursor, missing_or_empty_cursor):
         (flexmock(journal.Reader)
             .should_receive('get_next')
             .and_return({}))
@@ -280,18 +274,16 @@ exclusions:
             .should_receive('add_disjunction')
             .replace_with(watcher.watch_call('add_disjunction')))
 
-        with NamedTemporaryFile(mode='rt') as cursorfile:
-            with NamedTemporaryFile(mode='wt') as configfile:
-                configfile.write("""
-cursor-file: {cursor}
+        (configfile, cursorfile) = config_and_cursor
+        configfile.write("""
 inclusions:
 - PRIORITY: [0, 1, 2, 3]
 - PRIORITY: [4, 5, 6]
   _SYSTEMD_UNIT: [myservice.service]
-""".format(cursor=cursorfile.name))
-                configfile.flush()
-                cli = CLI(args=['--conf', configfile.name])
-                cli.run()
+""")
+        configfile.flush()
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
 
         # Should add matches for all of the first group
         assert set(watcher.calls[:4]) == set([
@@ -315,7 +307,7 @@ inclusions:
         # And nothing else
         assert len(watcher.calls) == 9
 
-    def test_multiple_output_formats_cli(self, capsys):
+    def test_multiple_output_formats_cli(self, capsys, config_and_cursor, missing_or_empty_cursor):
         entry = {
             '__CURSOR': '1',
             '__REALTIME_TIMESTAMP': datetime.now(),
@@ -327,15 +319,10 @@ inclusions:
             .and_return(entry)
             .and_return({}))
 
-        with NamedTemporaryFile(mode='rt') as cursorfile:
-            with NamedTemporaryFile(mode='wt') as configfile:
-                configfile.write("""
-cursor-file: {cursor}
-""".format(cursor=cursorfile.name))
-                configfile.flush()
-                cli = CLI(args=['--conf', configfile.name,
-                                '-o', 'cat,cat,json'])
-                cli.run()
+        (configfile, cursorfile) = config_and_cursor
+        cli = CLI(args=['--conf', configfile.name,
+                        '-o', 'cat,cat,json'])
+        cli.run()
 
         (out, err) = capsys.readouterr()
         assert not err
@@ -347,7 +334,7 @@ cursor-file: {cursor}
         del output['__REALTIME_TIMESTAMP']
         assert output == entry
 
-    def test_multiple_output_formats_conf(self, capsys):
+    def test_multiple_output_formats_conf(self, capsys, config_and_cursor, missing_or_empty_cursor):
         entry = {
             '__CURSOR': '1',
             '__REALTIME_TIMESTAMP': datetime.now(),
@@ -359,18 +346,16 @@ cursor-file: {cursor}
             .and_return(entry)
             .and_return({}))
 
-        with NamedTemporaryFile(mode='rt') as cursorfile:
-            with NamedTemporaryFile(mode='wt') as configfile:
-                configfile.write("""
+        (configfile, cursorfile) = config_and_cursor
+        configfile.write("""
 output:
 - cat
 - cat
 - json
-cursor-file: {cursor}
-""".format(cursor=cursorfile.name))
-                configfile.flush()
-                cli = CLI(args=['--conf', configfile.name])
-                cli.run()
+""")
+        configfile.flush()
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
 
         (out, err) = capsys.readouterr()
         assert not err
@@ -382,7 +367,7 @@ cursor-file: {cursor}
         del output['__REALTIME_TIMESTAMP']
         assert output == entry
 
-    def test_formatter_filter(self, capsys):
+    def test_formatter_filter(self, capsys, config_and_cursor, missing_or_empty_cursor):
         """
         Just a coverage test
         """
@@ -401,15 +386,10 @@ cursor-file: {cursor}
             .and_return(entry)
             .and_return({}))
 
-        with NamedTemporaryFile(mode='rt') as cursorfile:
-            with NamedTemporaryFile(mode='wt') as configfile:
-                configfile.write("""
-cursor-file: {cursor}
-""".format(cursor=cursorfile.name))
-                configfile.flush()
-                cli = CLI(args=['--conf', configfile.name,
-                                '-p', 'err', '-o', 'login'])
-                cli.run()
+        (configfile, cursorfile) = config_and_cursor
+        cli = CLI(args=['--conf', configfile.name,
+                        '-p', 'err', '-o', 'login'])
+        cli.run()
 
         (out, err) = capsys.readouterr()
         assert not err

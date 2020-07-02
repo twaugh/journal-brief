@@ -23,6 +23,7 @@ import journal_brief
 from journal_brief import SelectiveReader, LatestJournalEntries
 from systemd import journal
 import os
+import pytest
 import re
 
 
@@ -122,8 +123,26 @@ class TestSelectiveReader(object):
         assert watcher.calls[1] == ('log_level', (0,), '{}')
 
 
+@pytest.fixture
+def cursor_file_path(tmp_path):
+    return os.path.join(str(tmp_path), 'cursor')
+
+@pytest.fixture
+def cursor_file(cursor_file_path):
+    with open(cursor_file_path, 'w+t') as fp:
+        yield fp
+
+@pytest.fixture
+def missing_or_empty_cursor():
+    (flexmock(journal.Reader)
+        .should_receive('seek_tail')
+        .once())
+    (flexmock(journal.Reader)
+        .should_receive('get_previous')
+        .and_return({'__CURSOR': '0'}))
+
 class TestLatestJournalEntries(object):
-    def test_without_cursor(self, tmpdir):
+    def test_without_cursor(self, cursor_file_path, missing_or_empty_cursor):
         final_cursor = '2'
         (flexmock(journal.Reader)
             .should_receive('seek_cursor')
@@ -134,15 +153,33 @@ class TestLatestJournalEntries(object):
             .and_return({'__CURSOR': final_cursor})
             .and_return({}))
 
-        cursor_file = os.path.join(str(tmpdir), 'cursor')
-        with LatestJournalEntries(cursor_file=cursor_file) as entries:
+        with LatestJournalEntries(cursor_file=cursor_file_path) as entries:
             e = list(entries)
 
         assert len(e) == 2
-        with open(cursor_file, 'rt') as fp:
+        with open(cursor_file_path, 'rt') as fp:
             assert fp.read() == final_cursor
 
-    def test_with_cursor(self, tmpdir):
+    def test_empty_cursor(self, cursor_file, missing_or_empty_cursor):
+        final_cursor = '2'
+        (flexmock(journal.Reader)
+            .should_receive('seek_cursor')
+            .never())
+        (flexmock(journal.Reader)
+            .should_receive('get_next')
+            .and_return({'__CURSOR': '1'})
+            .and_return({'__CURSOR': final_cursor})
+            .and_return({}))
+
+        with LatestJournalEntries(cursor_file=cursor_file.name) as entries:
+            e = list(entries)
+
+        assert len(e) == 2
+
+        cursor_file.seek(0)
+        assert cursor_file.read() == final_cursor
+
+    def test_with_cursor(self, cursor_file):
         last_cursor = '2'
         final_cursor = '4'
         results = [{'__CURSOR': last_cursor},
@@ -159,18 +196,18 @@ class TestLatestJournalEntries(object):
             .and_return(results[2])
             .and_return({}))
 
-        cursor_file = os.path.join(str(tmpdir), 'cursor')
-        with open(cursor_file, 'wt') as fp:
-            fp.write(last_cursor)
+        cursor_file.write(last_cursor)
+        cursor_file.flush()
 
-        with LatestJournalEntries(cursor_file=cursor_file) as entries:
+        with LatestJournalEntries(cursor_file=cursor_file.name) as entries:
             e = list(entries)
 
         assert e == results[1:]
-        with open(cursor_file, 'rt') as fp:
-            assert fp.read() == final_cursor
 
-    def test_no_seek_cursor(self, tmpdir):
+        cursor_file.seek(0)
+        assert cursor_file.read() == final_cursor
+
+    def test_no_seek_cursor(self, cursor_file):
         last_cursor = '2'
         final_cursor = '3'
         results = [{'__CURSOR': '1'},
@@ -187,17 +224,17 @@ class TestLatestJournalEntries(object):
             .and_return(results[2])
             .and_return({}))
 
-        cursor_file = os.path.join(str(tmpdir), 'cursor')
-        with open(cursor_file, 'wt') as fp:
-            fp.write(last_cursor)
+        cursor_file.write(last_cursor)
+        cursor_file.flush()
 
-        with LatestJournalEntries(cursor_file=cursor_file,
+        with LatestJournalEntries(cursor_file=cursor_file.name,
                                   seek_cursor=False) as entries:
             e = list(entries)
 
         assert e == results
-        with open(cursor_file, 'rt') as fp:
-            assert fp.read() == final_cursor
+
+        cursor_file.seek(0)
+        assert cursor_file.read() == final_cursor
 
 
 def test_version():

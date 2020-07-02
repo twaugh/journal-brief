@@ -22,7 +22,7 @@ class Reader(Iterator):
         raise RuntimeError
 
     def get_previous(self):
-        return {'__CURSOR': '0'}
+        raise RuntimeError
 
     def __next__(self):
         entry = self.get_next()
@@ -50,7 +50,7 @@ class Reader(Iterator):
         raise RuntimeError
 
     def seek_tail(self):
-        pass
+        raise RuntimeError
 
     def close(self):
         pass

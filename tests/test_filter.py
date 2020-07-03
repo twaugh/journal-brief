@@ -165,7 +165,7 @@ class TestExclusion(object):
         assert '#' not in excl_str
         unyaml.write(excl_str)
         unyaml.seek(0)
-        assert yaml.load(unyaml) == [excl]
+        assert yaml.safe_load(unyaml) == [excl]
 
     def test_str_with_comment(self):
         excl = {'MESSAGE': ['exclude this']}
@@ -174,7 +174,7 @@ class TestExclusion(object):
         assert excl_str.startswith('# comment\n')
         unyaml.write(excl_str)
         unyaml.seek(0)
-        assert yaml.load(unyaml) == [excl]
+        assert yaml.safe_load(unyaml) == [excl]
 
 
 class MySpecialFormatter(EntryFormatter):

@@ -146,3 +146,64 @@ output.
 To create exclusion rules, rather than showing journal entries, run
 `journal-brief --dry-run debrief`.
 
+## Email
+
+The standard behavior of journal-brief is to send the desired journal
+entries to the standard output, but if desired it can be configured to
+send them via email instead. To do this, add an `email` section to the
+configuration file. There are two ways that email can be sent: through
+a command which implements the normal `mail` interface, or directly
+via SMTP.
+
+### Configuration keys
+
+* `suppress_empty`: if true, no email will be sent unless matching journal
+entries are found (defaults to `true`)
+
+### Email via command
+
+Example:
+```yaml
+email:
+  command: "mail -s 'journal output' admin@example.com"
+```
+
+This will cause journal-brief to execute the specified command in a
+child process and pipe the formatted journal entries to it. The supplied
+command string will be executed via the shell (typically identified in the
+`SHELL` environment variable) so it can make use of shell expansions and
+other features.
+
+### Email via SMTP
+
+Example:
+```yaml
+email:
+  smtp:
+    from: "journal sender" <journal@example.com>
+    to: "system admin" <admin@example.com>
+```
+
+This will cause journal-brief to use the Python `smtplib` module to send
+the formatted output to `admin@example.com`.
+
+#### Email SMTP configuration keys
+
+* `from`: RFC-5322 format address to be used as the sender address (required)
+
+* `to`: RFC-5322 format address to be used as the recipient address (required)
+
+* `subject`: string to be used as the email message subject
+
+* `host`: hostname or address of the SMTP server to use for sending email
+(defaults to `localhost`)
+
+* `port`: port number to connect to on the SMTP server (defaults to `25`)
+
+* `starttls`: boolean value indicating whether STARTTLS should be used to
+secure the connection to the SMTP server
+
+* `user`: username to be used to authenticate to the SMTP server
+
+* `password`: password to be used to authenticate to the SMTP server (only
+used if `user` is specified)

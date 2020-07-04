@@ -17,17 +17,25 @@ Copyright (c) 2015, 2020 Tim Waugh <tim@cyberelk.net>
 """
 
 from datetime import datetime
+from email.mime.text import MIMEText
+from email import charset
 from flexmock import flexmock
 from tests.util import Watcher
+from journal_brief.cli.constants import EMAIL_SUPPRESS_EMPTY_TEXT
+from journal_brief.cli.constants import EMAIL_DRY_RUN_SEPARATOR
 from journal_brief.cli.main import CLI
 import json
 import logging
 import os
 import pytest
+import smtplib
+import ssl
+import subprocess
 from systemd import journal
 from tempfile import NamedTemporaryFile
 from tests.test_filter import MySpecialFormatter  # registers class; # noqa: F401
 import uuid
+import yaml
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -404,3 +412,395 @@ output:
         (out, err) = capsys.readouterr()
         assert not err
         assert out
+
+
+class TestCLIEmailCommand(object):
+    TEST_COMMAND = 'foo'
+
+    def test(self, config_and_cursor, missing_or_empty_cursor):
+        entry = {
+            '__CURSOR': '1',
+            'TEST': 'yes',
+            'OUTPUT': 'message',
+        }
+
+        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
+         .should_receive('get_next')
+         .and_return(entry)
+         .and_return({}))
+
+        (flexmock(subprocess)
+         .should_receive('run')
+         .with_args(self.TEST_COMMAND, shell=True, check=True, text=True,
+                    input=entry['OUTPUT'])
+         .once())
+
+        (configfile, cursorfile) = config_and_cursor
+        configfile.write(yaml.dump({
+            'output': 'test',
+            'email': {
+                'command': self.TEST_COMMAND,
+            },
+        }))
+        configfile.flush()
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+    def test_dry_run(self, capsys, config_and_cursor):
+        entry = {
+            '__CURSOR': '1',
+            'TEST': 'yes',
+            'OUTPUT': 'message',
+        }
+
+        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
+         .should_receive('get_next')
+         .and_return(entry)
+         .and_return({}))
+
+        (flexmock(subprocess)
+         .should_receive('run')
+         .never())
+
+        (configfile, cursorfile) = config_and_cursor
+        configfile.write(yaml.dump({
+            'output': 'test',
+            'email': {
+                'command': self.TEST_COMMAND,
+            },
+        }))
+        configfile.flush()
+        cli = CLI(args=['--dry-run', '--conf', configfile.name])
+        cli.run()
+
+        (out, err) = capsys.readouterr()
+        assert not err
+        lines = out.splitlines()
+        assert len(lines) == 3
+        assert lines[0] == "Email to be delivered via '{0}'".format(self.TEST_COMMAND)
+        assert lines[1] == EMAIL_DRY_RUN_SEPARATOR
+
+    def test_allow_empty(self, config_and_cursor, missing_or_empty_cursor):
+        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
+         .should_receive('get_next')
+         .and_return({}))
+
+        (flexmock(subprocess)
+         .should_receive('run')
+         .with_args(self.TEST_COMMAND, shell=True, check=True, text=True,
+                    input=EMAIL_SUPPRESS_EMPTY_TEXT)
+         .once())
+
+        (configfile, cursorfile) = config_and_cursor
+        configfile.write(yaml.dump({
+            'email': {
+                'suppress_empty': False,
+                'command': self.TEST_COMMAND,
+            },
+        }))
+        configfile.flush()
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+    def test_suppress_empty(self, config_and_cursor, missing_or_empty_cursor):
+        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
+         .should_receive('get_next')
+         .and_return({}))
+
+        (flexmock(subprocess)
+         .should_receive('run')
+         .never())
+
+        (configfile, cursorfile) = config_and_cursor
+        configfile.write(yaml.dump({
+            'email': {
+                'command': self.TEST_COMMAND,
+            },
+        }))
+        configfile.flush()
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+
+class TestCLIEmailSMTP(object):
+    TEST_USER = 'zork'
+    TEST_PASSWORD = 'xyzzy'
+    TEST_HOST = 'example'
+    TEST_PORT = 1234
+
+    def test(self, capsys, config_and_cursor, missing_or_empty_cursor):
+        entry = {
+            '__CURSOR': '1',
+            'TEST': 'yes',
+            'OUTPUT': 'message',
+        }
+
+        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
+         .should_receive('get_next')
+         .and_return(entry)
+         .and_return({}))
+
+        charset.add_charset('utf-8', charset.QP, charset.QP)
+        message = MIMEText(entry['OUTPUT'], _charset='utf-8')
+        message['From'] = 'F'
+        message['To'] = 'T'
+
+        (flexmock(smtplib.SMTP)
+         .should_receive('send_message')
+         .with_args(str(message))
+         .once())
+
+        (configfile, cursorfile) = config_and_cursor
+        configfile.write(yaml.dump({
+            'output': 'test',
+            'email': {
+                'smtp': {
+                    'from': 'F',
+                    'to': 'T',
+                },
+            },
+        }))
+        configfile.flush()
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+    def test_dry_run(self, capsys, config_and_cursor):
+        entry = {
+            '__CURSOR': '1',
+            'TEST': 'yes',
+            'OUTPUT': 'message',
+        }
+
+        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
+         .should_receive('get_next')
+         .and_return(entry)
+         .and_return({}))
+
+        (flexmock(smtplib)
+         .should_receive('SMTP')
+         .never())
+
+        (configfile, cursorfile) = config_and_cursor
+        configfile.write(yaml.dump({
+            'output': 'test',
+            'email': {
+                'smtp': {
+                    'from': 'F',
+                    'to': 'T',
+                },
+            },
+        }))
+        configfile.flush()
+        cli = CLI(args=['--dry-run', '--conf', configfile.name])
+        cli.run()
+
+        (out, err) = capsys.readouterr()
+        assert not err
+        lines = out.splitlines()
+        assert len(lines) == 9
+        assert lines[0] == 'Email to be delivered via SMTP to localhost port 25'
+        assert lines[1] == EMAIL_DRY_RUN_SEPARATOR
+
+    def test_allow_empty(self, config_and_cursor, missing_or_empty_cursor):
+        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
+         .should_receive('get_next')
+         .and_return({}))
+
+        charset.add_charset('utf-8', charset.QP, charset.QP)
+        message = MIMEText(EMAIL_SUPPRESS_EMPTY_TEXT, _charset='utf-8')
+        message['From'] = 'F'
+        message['To'] = 'T'
+
+        (flexmock(smtplib.SMTP)
+         .should_receive('send_message')
+         .with_args(str(message))
+         .once())
+
+        (configfile, cursorfile) = config_and_cursor
+        configfile.write(yaml.dump({
+            'email': {
+                'suppress_empty': False,
+                'smtp': {
+                    'from': 'F',
+                    'to': 'T',
+                },
+            },
+        }))
+        configfile.flush()
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+    def test_suppress_empty(self, config_and_cursor, missing_or_empty_cursor):
+        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
+         .should_receive('get_next')
+         .and_return({}))
+
+        (flexmock(smtplib)
+         .should_receive('SMTP')
+         .never())
+
+        (configfile, cursorfile) = config_and_cursor
+        configfile.write(yaml.dump({
+            'email': {
+                'smtp': {
+                    'from': 'F',
+                    'to': 'T',
+                },
+            },
+        }))
+        configfile.flush()
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+    def test_host(self, config_and_cursor, missing_or_empty_cursor):
+        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
+         .should_receive('get_next')
+         .and_return({}))
+
+        (flexmock(smtplib.SMTP)
+         .should_receive('__init__')
+         .with_args(self.TEST_HOST, 0)
+         .once())
+
+        (flexmock(smtplib.SMTP)
+         .should_receive('send_message')
+         .once())
+
+        (configfile, cursorfile) = config_and_cursor
+        configfile.write(yaml.dump({
+            'email': {
+                'suppress_empty': False,
+                'smtp': {
+                    'host': self.TEST_HOST,
+                    'from': 'F',
+                    'to': 'T',
+                },
+            },
+        }))
+        configfile.flush()
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+    def test_port(self, config_and_cursor, missing_or_empty_cursor):
+        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
+         .should_receive('get_next')
+         .and_return({}))
+
+        (flexmock(smtplib.SMTP)
+         .should_receive('__init__')
+         .with_args(self.TEST_HOST, self.TEST_PORT)
+         .once())
+
+        (flexmock(smtplib.SMTP)
+         .should_receive('send_message')
+         .once())
+
+        (configfile, cursorfile) = config_and_cursor
+        configfile.write(yaml.dump({
+            'email': {
+                'suppress_empty': False,
+                'smtp': {
+                    'host': self.TEST_HOST,
+                    'port': self.TEST_PORT,
+                    'from': 'F',
+                    'to': 'T',
+                },
+            },
+        }))
+        configfile.flush()
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+    def test_starttls(self, config_and_cursor, missing_or_empty_cursor):
+        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
+         .should_receive('get_next')
+         .and_return({}))
+
+        (flexmock(smtplib.SMTP)
+         .should_receive('starttls')
+         .with_args(context=ssl.SSLContext)
+         .once()
+         .ordered())
+
+        (flexmock(smtplib.SMTP)
+         .should_receive('send_message')
+         .once()
+         .ordered())
+
+        (configfile, cursorfile) = config_and_cursor
+        configfile.write(yaml.dump({
+            'email': {
+                'suppress_empty': False,
+                'smtp': {
+                    'starttls': True,
+                    'from': 'F',
+                    'to': 'T',
+                },
+            },
+        }))
+        configfile.flush()
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+    def test_user(self, config_and_cursor, missing_or_empty_cursor):
+        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
+         .should_receive('get_next')
+         .and_return({}))
+
+        (flexmock(smtplib.SMTP)
+         .should_receive('login')
+         .with_args(self.TEST_USER, None)
+         .once()
+         .ordered())
+
+        (flexmock(smtplib.SMTP)
+         .should_receive('send_message')
+         .once()
+         .ordered())
+
+        (configfile, cursorfile) = config_and_cursor
+        configfile.write(yaml.dump({
+            'email': {
+                'suppress_empty': False,
+                'smtp': {
+                    'user': self.TEST_USER,
+                    'from': 'F',
+                    'to': 'T',
+                },
+            },
+        }))
+        configfile.flush()
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+    def test_password(self, config_and_cursor, missing_or_empty_cursor):
+        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
+         .should_receive('get_next')
+         .and_return({}))
+
+        (flexmock(smtplib.SMTP)
+         .should_receive('login')
+         .with_args(self.TEST_USER, self.TEST_PASSWORD)
+         .once()
+         .ordered())
+
+        (flexmock(smtplib.SMTP)
+         .should_receive('send_message')
+         .once()
+         .ordered())
+
+        (configfile, cursorfile) = config_and_cursor
+        configfile.write(yaml.dump({
+            'email': {
+                'suppress_empty': False,
+                'smtp': {
+                    'user': self.TEST_USER,
+                    'password': self.TEST_PASSWORD,
+                    'from': 'F',
+                    'to': 'T',
+                },
+            },
+        }))
+        configfile.flush()
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()

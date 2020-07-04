@@ -181,6 +181,11 @@ class LatestJournalEntries(Iterator):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        # if an exception was thrown by the code using this
+        # context manager, don't update the cursor
+        if exc_type is not None:
+            return
+
         if self.dry_run:
             return
 

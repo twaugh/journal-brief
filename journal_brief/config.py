@@ -118,6 +118,7 @@ class Config(dict):
         'inclusions',
         'output',
         'priority',
+        'email',
     }
 
     def __init__(self, config_file=None):
@@ -153,7 +154,8 @@ class Config(dict):
                        self.validate_inclusions_or_exclusions(valid_prios,
                                                               'inclusions'),
                        self.validate_output(),
-                       self.validate_priority(valid_prios)]:
+                       self.validate_priority(valid_prios),
+                       self.validate_email()]:
             for error in errors:
                 yield error
 
@@ -179,6 +181,116 @@ class Config(dict):
                 isinstance(self['debug'], int)):
             yield SemanticError('expected bool', 'debug',
                                 {'debug': self['debug']})
+
+    def validate_email(self):
+        ALLOWED_EMAIL_KEYWORDS = {
+            'command',
+            'smtp',
+            'suppress_empty',
+        }
+
+        ALLOWED_SMTP_KEYWORDS = {
+            'from',
+            'host',
+            'password',
+            'port',
+            'starttls',
+            'subject',
+            'to',
+            'user',
+        }
+
+        if 'email' not in self:
+            return
+
+        email = self.get('email')
+
+        if not isinstance(email, dict):
+            yield SemanticError('must be a map', 'email',
+                                {'email': email})
+            return
+
+        for unexpected_key in set(email) - ALLOWED_EMAIL_KEYWORDS:
+            yield SemanticError('unexpected \'email\' keyword', unexpected_key,
+                                {unexpected_key: email[unexpected_key]})
+
+        if 'suppress_empty' in email:
+            if not (isinstance(email['suppress_empty'], bool)
+                    or isinstance(email['suppress_empty'], int)):
+                yield SemanticError('expected bool', 'suppress_empty',
+                                    {'email': {'suppress_empty': email['suppress_empty']}})
+        else:
+            email['suppress_empty'] = True
+
+        if ('smtp' in email and 'command' in email):
+            yield SemanticError('cannot specify both smtp and command', 'command',
+                                {'email':
+                                 {'command': email['command'],
+                                  'smtp': email['smtp']}})
+
+        if ('command' in email and
+                not isinstance(email['command'], str)):
+            yield SemanticError('expected string', 'command',
+                                {'email': {'command': email['command']}})
+
+        if 'smtp' in email:
+            smtp = email['smtp']
+
+            if not isinstance(smtp, dict):
+                yield SemanticError('must be a map', 'smtp',
+                                    {'email': {'smtp': smtp}})
+                return
+
+            for unexpected_key in set(smtp) - ALLOWED_SMTP_KEYWORDS:
+                yield SemanticError('unexpected \'smtp\' keyword', unexpected_key,
+                                    {unexpected_key: smtp[unexpected_key]})
+
+            if 'from' not in smtp:
+                yield SemanticError('\'smtp\' map must include \'from\'', 'smtp',
+                                    {'smtp': smtp})
+            else:
+                if not isinstance(smtp['from'], str):
+                    yield SemanticError('expected string', 'from',
+                                        {'smtp': {'from': smtp['from']}})
+
+            if 'to' not in smtp:
+                yield SemanticError('\'smtp\' map must include \'to\'', 'smtp',
+                                    {'smtp': smtp})
+            else:
+                if not isinstance(smtp['to'], str):
+                    yield SemanticError('expected string', 'to',
+                                        {'smtp': {'to': smtp['to']}})
+
+            if ('subject' in smtp and
+                    not isinstance(smtp['subject'], str)):
+                yield SemanticError('expected string', 'subject',
+                                    {'smtp': {'subject': smtp['subject']}})
+
+            if ('host' in smtp and
+                    not isinstance(smtp['host'], str)):
+                yield SemanticError('expected string', 'host',
+                                    {'smtp': {'host': smtp['host']}})
+
+            if ('port' in smtp and
+                    not isinstance(smtp['port'], int)):
+                yield SemanticError('expected int', 'port',
+                                    {'smtp': {'port': smtp['port']}})
+
+            if ('starttls' in smtp and
+                not (isinstance(smtp['starttls'], bool) or
+                     isinstance(smtp['starttls'], int))):
+                yield SemanticError('expected bool', 'starttls',
+                                    {'smtp': {'starttls': smtp['starttls']}})
+
+            if ('user' in smtp and
+                    not isinstance(smtp['user'], str)):
+                yield SemanticError('expected string', 'user',
+                                    {'smtp': {'user': smtp['user']}})
+
+            if ('password' in smtp and
+                    not isinstance(smtp['password'], str)):
+                yield SemanticError('expected string', 'password',
+                                    {'smtp': {'password': smtp['password']}})
 
     def validate_output(self):
         if 'output' not in self:

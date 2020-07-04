@@ -17,10 +17,16 @@ Copyright (c) 2015, 2020 Tim Waugh <tim@cyberelk.net>
 """
 
 import argparse
+from email.mime.text import MIMEText
+from email import charset
+import io
 from locale import setlocale, LC_ALL
 import logging
 import os
 import signal
+import smtplib
+import ssl
+import subprocess
 import sys
 
 from journal_brief import (SelectiveReader,
@@ -28,6 +34,8 @@ from journal_brief import (SelectiveReader,
                            get_formatter,
                            list_formatters,
                            JournalFilter)
+from journal_brief.cli.constants import EMAIL_SUPPRESS_EMPTY_TEXT
+from journal_brief.cli.constants import EMAIL_DRY_RUN_SEPARATOR
 from journal_brief.config import Config, ConfigError
 from journal_brief.constants import PACKAGE, CONFIG_DIR, PRIORITY_MAP
 import journal_brief.format.config   # registers class; # noqa: F401
@@ -200,6 +208,45 @@ class CLI(object):
 
         return formatters
 
+    def send_email(self, output):
+        email = self.config.get('email')
+
+        if len(output) == 0:
+            if not email['suppress_empty']:
+                output = EMAIL_SUPPRESS_EMPTY_TEXT
+            else:
+                return
+
+        if 'command' in email:  # delivery through command
+            if self.args.dry_run:
+                print("Email to be delivered via '{0}'".format(email['command']))
+                print(EMAIL_DRY_RUN_SEPARATOR)
+                print(output)
+            else:
+                subprocess.run(email['command'], shell=True, check=True, text=True, input=output)
+        else:  # delivery via SMTP
+            smtp = email['smtp']
+            charset.add_charset('utf-8', charset.QP, charset.QP)
+            message = MIMEText(output, _charset='utf-8')
+            message['From'] = smtp['from']
+            message['To'] = smtp['to']
+            if 'subject' in smtp:
+                message['Subject'] = smtp['subject']
+
+            if self.args.dry_run:
+                print("Email to be delivered via SMTP to {0} port {1}".format(
+                    smtp.get('host', 'localhost'),
+                    smtp.get('port', '25')))
+                print(EMAIL_DRY_RUN_SEPARATOR)
+                print(message)
+            else:
+                with smtplib.SMTP(smtp.get('host'), smtp.get('port', 0)) as sender:
+                    if smtp.get('starttls', False):
+                        sender.starttls(context=ssl.create_default_context())
+                    if 'user' in smtp:
+                        sender.login(smtp.get('user'), smtp.get('password'))
+                    sender.send_message(str(message))
+
     def run(self):
         if self.handle_options():
             return
@@ -238,8 +285,14 @@ class CLI(object):
                                     default_exclusions=exclusions)
             if self.args.cmd == 'stats':
                 self.show_stats(jfilter)
-            else:
+            elif self.config.get('email') is None:
                 jfilter.format(sys.stdout)
+            else:
+                output_stream = io.StringIO()
+                jfilter.format(output_stream)
+                output = output_stream.getvalue()
+                output_stream.close()
+                self.send_email(output)
 
 
 def run():

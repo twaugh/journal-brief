@@ -24,6 +24,7 @@ import logging
 import os
 import pytest
 from tempfile import NamedTemporaryFile
+import yaml
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -158,3 +159,55 @@ exclusions:
             cfp.flush()
             c = Config(config_file=cfp.name)
             assert len(c['output']) == num_outputs
+
+    @pytest.mark.parametrize('badconfig', [
+        {'disallowed': '1'},
+        {'suppress_empty': 'foo'},
+        {'command': []},
+        {'smtp': []},
+        {'command': 'foo', 'smtp': 'bar'},
+        {'smtp': {'disallowed': '1'}},
+        {'smtp': {'from': 'foo'}},
+        {'smtp': {'to': 'bar'}},
+        {'smtp': {
+            'from': 'foo',
+            'to': 'bar',
+            'subject': [],
+        }},
+        {'smtp': {
+            'from': 'foo',
+            'to': 'bar',
+            'host': [],
+        }},
+        {'smtp': {
+            'from': 'foo',
+            'to': 'bar',
+            'port': [],
+        }},
+        {'smtp': {
+            'from': 'foo',
+            'to': 'bar',
+            'starttls': 'baz',
+        }},
+        {'smtp': {
+            'from': 'foo',
+            'to': 'bar',
+            'user': [],
+        }},
+        {'smtp': {
+            'from': 'foo',
+            'to': 'bar',
+            'password': [],
+        }},
+    ])
+    def test_validation_email(self, badconfig):
+        with NamedTemporaryFile(mode='wt') as cfp:
+            cfp.write(yaml.dump({'email': badconfig}))
+            cfp.flush()
+            with pytest.raises(ConfigError):
+                try:
+                    Config(config_file=cfp.name)
+                except ConfigError as ex:
+                    # Test the exception can be represented as a string
+                    str(ex)
+                    raise

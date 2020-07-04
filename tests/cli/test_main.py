@@ -527,6 +527,7 @@ class TestCLIEmailSMTP(object):
     TEST_PASSWORD = 'xyzzy'
     TEST_HOST = 'example'
     TEST_PORT = 1234
+    TEST_SUBJECT = 'subj'
 
     def test(self, capsys, config_and_cursor, missing_or_empty_cursor):
         entry = {
@@ -798,6 +799,37 @@ class TestCLIEmailSMTP(object):
                     'password': self.TEST_PASSWORD,
                     'from': 'F',
                     'to': 'T',
+                },
+            },
+        }))
+        configfile.flush()
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+    def test_subject(self, config_and_cursor, missing_or_empty_cursor):
+        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
+         .should_receive('get_next')
+         .and_return({}))
+
+        charset.add_charset('utf-8', charset.QP, charset.QP)
+        message = MIMEText(EMAIL_SUPPRESS_EMPTY_TEXT, _charset='utf-8')
+        message['From'] = 'F'
+        message['To'] = 'T'
+        message['Subject'] = self.TEST_SUBJECT
+
+        (flexmock(smtplib.SMTP)
+         .should_receive('send_message')
+         .with_args(str(message))
+         .once())
+
+        (configfile, cursorfile) = config_and_cursor
+        configfile.write(yaml.dump({
+            'email': {
+                'suppress_empty': False,
+                'smtp': {
+                    'from': 'F',
+                    'to': 'T',
+                    'subject': self.TEST_SUBJECT,
                 },
             },
         }))

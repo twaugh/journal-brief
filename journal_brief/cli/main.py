@@ -34,8 +34,8 @@ from journal_brief import (SelectiveReader,
                            get_formatter,
                            list_formatters,
                            JournalFilter)
-from journal_brief.cli.constants import EMAIL_SUPPRESS_EMPTY_TEXT
-from journal_brief.cli.constants import EMAIL_DRY_RUN_SEPARATOR
+from journal_brief.cli.constants import (EMAIL_SUPPRESS_EMPTY_TEXT,
+                                         EMAIL_DRY_RUN_SEPARATOR)
 from journal_brief.config import Config, ConfigError
 from journal_brief.constants import PACKAGE, CONFIG_DIR, PRIORITY_MAP
 import journal_brief.format.config   # registers class; # noqa: F401
@@ -211,7 +211,7 @@ class CLI(object):
     def send_email(self, output):
         email = self.config.get('email')
 
-        if len(output) == 0:
+        if not output:
             if not email['suppress_empty']:
                 output = EMAIL_SUPPRESS_EMPTY_TEXT
             else:

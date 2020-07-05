@@ -21,8 +21,8 @@ from email.mime.text import MIMEText
 from email import charset
 from flexmock import flexmock
 from tests.util import Watcher
-from journal_brief.cli.constants import EMAIL_SUPPRESS_EMPTY_TEXT
-from journal_brief.cli.constants import EMAIL_DRY_RUN_SEPARATOR
+from journal_brief.cli.constants import (EMAIL_SUPPRESS_EMPTY_TEXT,
+                                         EMAIL_DRY_RUN_SEPARATOR)
 from journal_brief.cli.main import CLI
 import json
 import logging

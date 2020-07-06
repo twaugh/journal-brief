@@ -245,7 +245,7 @@ class CLI(object):
                         sender.starttls(context=ssl.create_default_context())
                     if 'user' in smtp:
                         sender.login(smtp.get('user'), smtp.get('password'))
-                    sender.send_message(str(message))
+                    sender.send_message(message)
 
     def run(self):
         if self.handle_options():

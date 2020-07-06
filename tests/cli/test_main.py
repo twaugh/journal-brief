@@ -522,6 +522,14 @@ class TestCLIEmailCommand(object):
         cli.run()
 
 
+class EmailMessageMatcher(object):
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __eq__(self, msg):
+        return str(self.msg) == str(msg)
+
+
 class TestCLIEmailSMTP(object):
     TEST_USER = 'zork'
     TEST_PASSWORD = 'xyzzy'
@@ -561,7 +569,7 @@ class TestCLIEmailSMTP(object):
 
         (flexmock(smtplib.SMTP)
          .should_receive('send_message')
-         .with_args(str(message))
+         .with_args(EmailMessageMatcher(message))
          .once())
 
         (configfile, cursorfile) = config_and_cursor
@@ -627,7 +635,7 @@ class TestCLIEmailSMTP(object):
 
         (flexmock(smtplib.SMTP)
          .should_receive('send_message')
-         .with_args(str(message))
+         .with_args(EmailMessageMatcher(message))
          .once())
 
         (configfile, cursorfile) = config_and_cursor
@@ -832,7 +840,7 @@ class TestCLIEmailSMTP(object):
 
         (flexmock(smtplib.SMTP)
          .should_receive('send_message')
-         .with_args(str(message))
+         .with_args(EmailMessageMatcher(message))
          .once())
 
         (configfile, cursorfile) = config_and_cursor

@@ -529,6 +529,19 @@ class TestCLIEmailSMTP(object):
     TEST_PORT = 1234
     TEST_SUBJECT = 'subj'
 
+    @pytest.fixture(autouse=True)
+    def smtp_mock_fixer(self):
+        # ensure that no attempt is made to make a connection
+        (flexmock(smtplib.SMTP)
+         .should_receive('connect')
+         .with_args(str, int))
+        # in Python versions before 3.8, the `close` method will fail if
+        # no connection was opened; because the object has been mocked,
+        # that will always be the case
+        (flexmock(smtplib.SMTP)
+         .should_receive('close')
+         .and_return(None))
+
     def test(self, capsys, config_and_cursor, missing_or_empty_cursor):
         entry = {
             '__CURSOR': '1',

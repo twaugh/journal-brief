@@ -2,7 +2,7 @@
 %global sum Find new systemd journal entries since last run
 
 Name:		python-%{srcname}
-Version:	1.1.5
+Version:	1.1.6
 Release:	1%{?dist}
 Summary:	%{sum}
 
@@ -69,6 +69,12 @@ PYTEST_ARGS='-v --doctest-modules tests journal_brief'
 
 
 %changelog
+* Tue Jul  7 2020 Tim Waugh <twaugh@redhat.com> - 1.1.6-1
+- 1.1.6.
+
+* Mon Oct 31 2016 Tim Waugh <twaugh@redhat.com> - 1.1.5-1
+- 1.1.5.
+
 * Sun Jul 24 2016 Tim Waugh <twaugh@redhat.com> - 1.1.4-1
 - 1.1.4.
 

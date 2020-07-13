@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """
-Copyright (c) 2015, 2016 Tim Waugh <tim@cyberelk.net>
+Copyright (c) 2015, 2016, 2020 Tim Waugh <tim@cyberelk.net>
 
 ## This program is free software; you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -50,7 +50,7 @@ entry is, and exclusion rules can be built automatically.
 
 setup(
     name='journal-brief',
-    version='1.1.6',  # also update journal_brief/__init__.py
+    version='1.1.7',  # also update journal_brief/__init__.py
     description='Show interesting new systemd journal entries since last run',
     long_description=long_description,
     author='Tim Waugh',

@@ -1,5 +1,5 @@
 """
-Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
+Copyright (c) 2015, 2020 Tim Waugh <tim@cyberelk.net>
 
 ## This program is free software; you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -27,4 +27,4 @@ __all__ = ['SelectiveReader', 'LatestJournalEntries',
            'list_formatters', 'get_formatter',
            'Config']
 
-__version__ = '1.1.6'  # also update setup.py and python-journal-brief.spec
+__version__ = '1.1.7'  # also update setup.py and python-journal-brief.spec

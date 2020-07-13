@@ -17,10 +17,8 @@ Copyright (c) 2015, 2020 Tim Waugh <tim@cyberelk.net>
 """
 
 from datetime import datetime
-from email.mime.text import MIMEText
-from email import charset
+import email.mime.text
 from flexmock import flexmock
-from tests.util import Watcher
 from journal_brief.cli.constants import (EMAIL_SUPPRESS_EMPTY_TEXT,
                                          EMAIL_DRY_RUN_SEPARATOR)
 from journal_brief.cli.main import CLI
@@ -34,6 +32,7 @@ import subprocess
 from systemd import journal
 from tempfile import NamedTemporaryFile
 from tests.test_filter import MySpecialFormatter  # registers class; # noqa: F401
+from tests.util import Watcher
 import uuid
 import yaml
 
@@ -522,14 +521,6 @@ class TestCLIEmailCommand(object):
         cli.run()
 
 
-class EmailMessageMatcher(object):
-    def __init__(self, msg):
-        self.msg = msg
-
-    def __eq__(self, msg):
-        return str(self.msg) == str(msg)
-
-
 class TestCLIEmailSMTP(object):
     TEST_USER = 'zork'
     TEST_PASSWORD = 'xyzzy'
@@ -562,14 +553,20 @@ class TestCLIEmailSMTP(object):
          .and_return(entry)
          .and_return({}))
 
-        charset.add_charset('utf-8', charset.QP, charset.QP)
-        message = MIMEText(entry['OUTPUT'], _charset='utf-8')
-        message['From'] = 'F'
-        message['To'] = 'T'
+        (flexmock(email.mime.text.MIMEText)
+         .should_receive('__init__')
+         .with_args(entry['OUTPUT'], _charset='utf-8'))
+
+        (flexmock(email.mime.text.MIMEText)
+         .should_receive('__setitem__')
+         .with_args('From', 'F'))
+
+        (flexmock(email.mime.text.MIMEText)
+         .should_receive('__setitem__')
+         .with_args('To', 'T'))
 
         (flexmock(smtplib.SMTP)
          .should_receive('send_message')
-         .with_args(EmailMessageMatcher(message))
          .once())
 
         (configfile, cursorfile) = config_and_cursor
@@ -628,14 +625,20 @@ class TestCLIEmailSMTP(object):
          .should_receive('get_next')
          .and_return({}))
 
-        charset.add_charset('utf-8', charset.QP, charset.QP)
-        message = MIMEText(EMAIL_SUPPRESS_EMPTY_TEXT, _charset='utf-8')
-        message['From'] = 'F'
-        message['To'] = 'T'
+        (flexmock(email.mime.text.MIMEText)
+         .should_receive('__init__')
+         .with_args(EMAIL_SUPPRESS_EMPTY_TEXT, _charset='utf-8'))
+
+        (flexmock(email.mime.text.MIMEText)
+         .should_receive('__setitem__')
+         .with_args('From', 'F'))
+
+        (flexmock(email.mime.text.MIMEText)
+         .should_receive('__setitem__')
+         .with_args('To', 'T'))
 
         (flexmock(smtplib.SMTP)
          .should_receive('send_message')
-         .with_args(EmailMessageMatcher(message))
          .once())
 
         (configfile, cursorfile) = config_and_cursor
@@ -832,15 +835,24 @@ class TestCLIEmailSMTP(object):
          .should_receive('get_next')
          .and_return({}))
 
-        charset.add_charset('utf-8', charset.QP, charset.QP)
-        message = MIMEText(EMAIL_SUPPRESS_EMPTY_TEXT, _charset='utf-8')
-        message['From'] = 'F'
-        message['To'] = 'T'
-        message['Subject'] = self.TEST_SUBJECT
+        (flexmock(email.mime.text.MIMEText)
+         .should_receive('__init__')
+         .with_args(EMAIL_SUPPRESS_EMPTY_TEXT, _charset='utf-8'))
+
+        (flexmock(email.mime.text.MIMEText)
+         .should_receive('__setitem__')
+         .with_args('Subject', self.TEST_SUBJECT))
+
+        (flexmock(email.mime.text.MIMEText)
+         .should_receive('__setitem__')
+         .with_args('From', 'F'))
+
+        (flexmock(email.mime.text.MIMEText)
+         .should_receive('__setitem__')
+         .with_args('To', 'T'))
 
         (flexmock(smtplib.SMTP)
          .should_receive('send_message')
-         .with_args(EmailMessageMatcher(message))
          .once())
 
         (configfile, cursorfile) = config_and_cursor

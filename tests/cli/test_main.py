@@ -41,12 +41,19 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 @pytest.fixture
-def config_and_cursor(tmp_path):
+def build_config_and_cursor(tmp_path):
     with NamedTemporaryFile(mode='wt', dir=tmp_path) as configfile:
         with NamedTemporaryFile(mode='w+t', dir=tmp_path) as cursorfile:
-            configfile.write('cursor-file: {0}\n'.format(cursorfile.name))
-            configfile.flush()
-            yield (configfile, cursorfile)
+            def write_config(config = None):
+                configfile.write('cursor-file: {0}\n'.format(cursorfile.name))
+                if isinstance(config, dict):
+                    configfile.write(yaml.dump(config))
+                elif config:
+                    configfile.write(config)
+                configfile.flush()
+                return (configfile, cursorfile)
+
+            yield write_config
 
 
 @pytest.fixture
@@ -77,7 +84,7 @@ class TestCLI(object):
                             '-p', 'debug'])
             assert cli.config.get('priority') == 'debug'
 
-    def test_normal_run(self, capsys, config_and_cursor, missing_or_empty_cursor):
+    def test_normal_run(self, capsys, build_config_and_cursor, missing_or_empty_cursor):
         (flexmock(journal.Reader, add_match=None, add_disjunction=None)
             .should_receive('get_next')
             .and_return({'__CURSOR': '1',
@@ -88,7 +95,7 @@ class TestCLI(object):
                          'MESSAGE': 'message2'})
             .and_return({}))
 
-        (configfile, cursorfile) = config_and_cursor
+        (configfile, cursorfile) = build_config_and_cursor()
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
@@ -96,7 +103,7 @@ class TestCLI(object):
         assert not err
         assert len(out.splitlines()) == 2
 
-    def test_dry_run(self, config_and_cursor):
+    def test_dry_run(self, build_config_and_cursor):
         (flexmock(journal.Reader, add_match=None, add_disjunction=None)
             .should_receive('get_next')
             .and_return({'__CURSOR': '1',
@@ -104,12 +111,12 @@ class TestCLI(object):
                          'MESSAGE': 'message'})
             .and_return({}))
 
-        (configfile, cursorfile) = config_and_cursor
+        (configfile, cursorfile) = build_config_and_cursor()
         cli = CLI(args=['--conf', configfile.name, '--dry-run'])
         cli.run()
         assert not cursorfile.read()
 
-    def test_this_boot(self, config_and_cursor):
+    def test_this_boot(self, build_config_and_cursor):
         final_cursor = '1'
         flexmock(journal.Reader, add_match=None, add_disjunction=None)
         (flexmock(journal.Reader)
@@ -122,7 +129,7 @@ class TestCLI(object):
                          'MESSAGE': 'message'})
             .and_return({}))
 
-        (configfile, cursorfile) = config_and_cursor
+        (configfile, cursorfile) = build_config_and_cursor()
         cursorfile.write(final_cursor)
         cursorfile.flush()
         cli = CLI(args=['--conf', configfile.name, '-b'])
@@ -130,7 +137,7 @@ class TestCLI(object):
         cursorfile.seek(0)
         assert cursorfile.read() == final_cursor
 
-    def test_log_level(self, config_and_cursor, missing_or_empty_cursor):
+    def test_log_level(self, build_config_and_cursor, missing_or_empty_cursor):
         flexmock(journal.Reader, add_match=None, add_disjunction=None)
         (flexmock(journal.Reader)
             .should_receive('log_level')
@@ -140,12 +147,12 @@ class TestCLI(object):
             .should_receive('get_next')
             .and_return({}))
 
-        (configfile, cursorfile) = config_and_cursor
+        (configfile, cursorfile) = build_config_and_cursor()
         cli = CLI(args=['--conf', configfile.name, '-p', 'err'])
         cli.run()
 
-    def test_reset(self, config_and_cursor):
-        (configfile, cursorfile) = config_and_cursor
+    def test_reset(self, build_config_and_cursor):
+        (configfile, cursorfile) = build_config_and_cursor()
         with cursorfile:  # force the cursorfile context to be exited at the right time
             cli = CLI(args=['--conf', configfile.name, 'reset'])
             cli.run()
@@ -158,7 +165,7 @@ class TestCLI(object):
         cli.run()
         assert not os.access(cursorfile.name, os.F_OK)
 
-    def test_stats(self, capsys, config_and_cursor, missing_or_empty_cursor):
+    def test_stats(self, capsys, build_config_and_cursor, missing_or_empty_cursor):
         (flexmock(journal.Reader, add_match=None, add_disjunction=None)
             .should_receive('get_next')
             .and_return({'__CURSOR': '1',
@@ -169,12 +176,10 @@ class TestCLI(object):
                          'MESSAGE': 'include'})
             .and_return({}))
 
-        (configfile, cursorfile) = config_and_cursor
-        configfile.write("""
+        (configfile, cursorfile) = build_config_and_cursor("""
 exclusions:
 - MESSAGE: [exclude]
 """)
-        configfile.flush()
         cli = CLI(args=['--conf', configfile.name, 'stats'])
         cli.run()
 
@@ -184,7 +189,7 @@ exclusions:
                                  "         1  {'MESSAGE': ['exclude']}",
                                  ""])
 
-    def test_debrief(self, capsys, config_and_cursor, missing_or_empty_cursor):
+    def test_debrief(self, capsys, build_config_and_cursor, missing_or_empty_cursor):
         entries = [
             {'__CURSOR': '1',
              'MESSAGE': 'message 1',
@@ -215,7 +220,7 @@ exclusions:
 
         expectation.and_return({})
 
-        (configfile, cursorfile) = config_and_cursor
+        (configfile, cursorfile) = build_config_and_cursor()
         cli = CLI(args=['--conf', configfile.name, 'debrief'])
         cli.run()
 
@@ -231,7 +236,7 @@ exclusions:
             "    - message 2",
             ''])
 
-    def test_debrief_no_input(self, capsys, config_and_cursor, missing_or_empty_cursor):
+    def test_debrief_no_input(self, capsys, build_config_and_cursor, missing_or_empty_cursor):
         """
         Check it handles there being no input
         """
@@ -239,7 +244,7 @@ exclusions:
             .should_receive('get_next')
             .and_return({}))
 
-        (configfile, cursorfile) = config_and_cursor
+        (configfile, cursorfile) = build_config_and_cursor()
         cli = CLI(args=['--conf', configfile.name, 'debrief'])
         cli.run()
 
@@ -247,7 +252,7 @@ exclusions:
         assert not err
         assert not out
 
-    def test_exclusions_yaml(self, capsys, config_and_cursor, missing_or_empty_cursor):
+    def test_exclusions_yaml(self, capsys, build_config_and_cursor, missing_or_empty_cursor):
         (flexmock(journal.Reader, add_match=None, add_disjunction=None)
             .should_receive('get_next')
             .and_return({'__CURSOR': '1',
@@ -255,12 +260,10 @@ exclusions:
                          'MESSAGE': 'message'})
             .and_return({}))
 
-        (configfile, cursorfile) = config_and_cursor
-        configfile.write("""
+        (configfile, cursorfile) = build_config_and_cursor("""
 exclusions:
 - MESSAGE: [1]
 """)
-        configfile.flush()
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
@@ -268,7 +271,7 @@ exclusions:
         assert not err
         assert 'message' in out
 
-    def test_inclusions_yaml(self, config_and_cursor, missing_or_empty_cursor):
+    def test_inclusions_yaml(self, build_config_and_cursor, missing_or_empty_cursor):
         (flexmock(journal.Reader)
             .should_receive('get_next')
             .and_return({}))
@@ -283,14 +286,12 @@ exclusions:
             .should_receive('add_disjunction')
             .replace_with(watcher.watch_call('add_disjunction')))
 
-        (configfile, cursorfile) = config_and_cursor
-        configfile.write("""
+        (configfile, cursorfile) = build_config_and_cursor("""
 inclusions:
 - PRIORITY: [0, 1, 2, 3]
 - PRIORITY: [4, 5, 6]
   _SYSTEMD_UNIT: [myservice.service]
 """)
-        configfile.flush()
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
@@ -316,7 +317,7 @@ inclusions:
         # And nothing else
         assert len(watcher.calls) == 9
 
-    def test_multiple_output_formats_cli(self, capsys, config_and_cursor, missing_or_empty_cursor):
+    def test_multiple_output_formats_cli(self, capsys, build_config_and_cursor, missing_or_empty_cursor):
         entry = {
             '__CURSOR': '1',
             '__REALTIME_TIMESTAMP': datetime.now(),
@@ -328,7 +329,7 @@ inclusions:
             .and_return(entry)
             .and_return({}))
 
-        (configfile, cursorfile) = config_and_cursor
+        (configfile, cursorfile) = build_config_and_cursor()
         cli = CLI(args=['--conf', configfile.name,
                         '-o', 'cat,cat,json'])
         cli.run()
@@ -343,7 +344,7 @@ inclusions:
         del output['__REALTIME_TIMESTAMP']
         assert output == entry
 
-    def test_multiple_output_formats_conf(self, capsys, config_and_cursor, missing_or_empty_cursor):
+    def test_multiple_output_formats_conf(self, capsys, build_config_and_cursor, missing_or_empty_cursor):
         entry = {
             '__CURSOR': '1',
             '__REALTIME_TIMESTAMP': datetime.now(),
@@ -355,14 +356,12 @@ inclusions:
             .and_return(entry)
             .and_return({}))
 
-        (configfile, cursorfile) = config_and_cursor
-        configfile.write("""
+        (configfile, cursorfile) = build_config_and_cursor("""
 output:
 - cat
 - cat
 - json
 """)
-        configfile.flush()
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
@@ -376,7 +375,7 @@ output:
         del output['__REALTIME_TIMESTAMP']
         assert output == entry
 
-    def test_formatter_filter(self, capsys, config_and_cursor, missing_or_empty_cursor):
+    def test_formatter_filter(self, capsys, build_config_and_cursor, missing_or_empty_cursor):
         """
         Just a coverage test
         """
@@ -395,7 +394,7 @@ output:
             .and_return(entry)
             .and_return({}))
 
-        (configfile, cursorfile) = config_and_cursor
+        (configfile, cursorfile) = build_config_and_cursor()
         cli = CLI(args=['--conf', configfile.name,
                         '-p', 'err', '-o', 'login'])
         cli.run()
@@ -416,7 +415,7 @@ output:
 class TestCLIEmailCommand(object):
     TEST_COMMAND = 'foo'
 
-    def test(self, config_and_cursor, missing_or_empty_cursor):
+    def test(self, build_config_and_cursor, missing_or_empty_cursor):
         entry = {
             '__CURSOR': '1',
             'TEST': 'yes',
@@ -434,18 +433,16 @@ class TestCLIEmailCommand(object):
                     input=entry['OUTPUT'])
          .once())
 
-        (configfile, cursorfile) = config_and_cursor
-        configfile.write(yaml.dump({
+        (configfile, cursorfile) = build_config_and_cursor({
             'output': 'test',
             'email': {
                 'command': self.TEST_COMMAND,
-            },
-        }))
-        configfile.flush()
+            }
+        })
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
-    def test_dry_run(self, capsys, config_and_cursor):
+    def test_dry_run(self, capsys, build_config_and_cursor):
         entry = {
             '__CURSOR': '1',
             'TEST': 'yes',
@@ -461,14 +458,12 @@ class TestCLIEmailCommand(object):
          .should_receive('run')
          .never())
 
-        (configfile, cursorfile) = config_and_cursor
-        configfile.write(yaml.dump({
+        (configfile, cursorfile) = build_config_and_cursor({
             'output': 'test',
             'email': {
                 'command': self.TEST_COMMAND,
             },
-        }))
-        configfile.flush()
+        })
         cli = CLI(args=['--dry-run', '--conf', configfile.name])
         cli.run()
 
@@ -479,7 +474,7 @@ class TestCLIEmailCommand(object):
         assert lines[0] == "Email to be delivered via '{0}'".format(self.TEST_COMMAND)
         assert lines[1] == EMAIL_DRY_RUN_SEPARATOR
 
-    def test_allow_empty(self, config_and_cursor, missing_or_empty_cursor):
+    def test_allow_empty(self, build_config_and_cursor, missing_or_empty_cursor):
         (flexmock(journal.Reader, add_match=None, add_disjunction=None)
          .should_receive('get_next')
          .and_return({}))
@@ -490,18 +485,16 @@ class TestCLIEmailCommand(object):
                     input=EMAIL_SUPPRESS_EMPTY_TEXT)
          .once())
 
-        (configfile, cursorfile) = config_and_cursor
-        configfile.write(yaml.dump({
+        (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
                 'command': self.TEST_COMMAND,
             },
-        }))
-        configfile.flush()
+        })
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
-    def test_suppress_empty(self, config_and_cursor, missing_or_empty_cursor):
+    def test_suppress_empty(self, build_config_and_cursor, missing_or_empty_cursor):
         (flexmock(journal.Reader, add_match=None, add_disjunction=None)
          .should_receive('get_next')
          .and_return({}))
@@ -510,13 +503,11 @@ class TestCLIEmailCommand(object):
          .should_receive('run')
          .never())
 
-        (configfile, cursorfile) = config_and_cursor
-        configfile.write(yaml.dump({
+        (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'command': self.TEST_COMMAND,
             },
-        }))
-        configfile.flush()
+        })
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
@@ -541,7 +532,7 @@ class TestCLIEmailSMTP(object):
          .should_receive('close')
          .and_return(None))
 
-    def test(self, capsys, config_and_cursor, missing_or_empty_cursor):
+    def test(self, capsys, build_config_and_cursor, missing_or_empty_cursor):
         entry = {
             '__CURSOR': '1',
             'TEST': 'yes',
@@ -569,8 +560,7 @@ class TestCLIEmailSMTP(object):
          .should_receive('send_message')
          .once())
 
-        (configfile, cursorfile) = config_and_cursor
-        configfile.write(yaml.dump({
+        (configfile, cursorfile) = build_config_and_cursor({
             'output': 'test',
             'email': {
                 'smtp': {
@@ -578,12 +568,11 @@ class TestCLIEmailSMTP(object):
                     'to': 'T',
                 },
             },
-        }))
-        configfile.flush()
+        })
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
-    def test_dry_run(self, capsys, config_and_cursor):
+    def test_dry_run(self, capsys, build_config_and_cursor):
         entry = {
             '__CURSOR': '1',
             'TEST': 'yes',
@@ -599,8 +588,7 @@ class TestCLIEmailSMTP(object):
          .should_receive('SMTP')
          .never())
 
-        (configfile, cursorfile) = config_and_cursor
-        configfile.write(yaml.dump({
+        (configfile, cursorfile) = build_config_and_cursor({
             'output': 'test',
             'email': {
                 'smtp': {
@@ -608,8 +596,7 @@ class TestCLIEmailSMTP(object):
                     'to': 'T',
                 },
             },
-        }))
-        configfile.flush()
+        })
         cli = CLI(args=['--dry-run', '--conf', configfile.name])
         cli.run()
 
@@ -620,7 +607,7 @@ class TestCLIEmailSMTP(object):
         assert lines[0] == 'Email to be delivered via SMTP to localhost port 25'
         assert lines[1] == EMAIL_DRY_RUN_SEPARATOR
 
-    def test_allow_empty(self, config_and_cursor, missing_or_empty_cursor):
+    def test_allow_empty(self, build_config_and_cursor, missing_or_empty_cursor):
         (flexmock(journal.Reader, add_match=None, add_disjunction=None)
          .should_receive('get_next')
          .and_return({}))
@@ -641,8 +628,7 @@ class TestCLIEmailSMTP(object):
          .should_receive('send_message')
          .once())
 
-        (configfile, cursorfile) = config_and_cursor
-        configfile.write(yaml.dump({
+        (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
                 'smtp': {
@@ -650,12 +636,11 @@ class TestCLIEmailSMTP(object):
                     'to': 'T',
                 },
             },
-        }))
-        configfile.flush()
+        })
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
-    def test_suppress_empty(self, config_and_cursor, missing_or_empty_cursor):
+    def test_suppress_empty(self, build_config_and_cursor, missing_or_empty_cursor):
         (flexmock(journal.Reader, add_match=None, add_disjunction=None)
          .should_receive('get_next')
          .and_return({}))
@@ -664,20 +649,18 @@ class TestCLIEmailSMTP(object):
          .should_receive('SMTP')
          .never())
 
-        (configfile, cursorfile) = config_and_cursor
-        configfile.write(yaml.dump({
+        (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'smtp': {
                     'from': 'F',
                     'to': 'T',
                 },
             },
-        }))
-        configfile.flush()
+        })
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
-    def test_host(self, config_and_cursor, missing_or_empty_cursor):
+    def test_host(self, build_config_and_cursor, missing_or_empty_cursor):
         (flexmock(journal.Reader, add_match=None, add_disjunction=None)
          .should_receive('get_next')
          .and_return({}))
@@ -691,8 +674,7 @@ class TestCLIEmailSMTP(object):
          .should_receive('send_message')
          .once())
 
-        (configfile, cursorfile) = config_and_cursor
-        configfile.write(yaml.dump({
+        (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
                 'smtp': {
@@ -701,12 +683,11 @@ class TestCLIEmailSMTP(object):
                     'to': 'T',
                 },
             },
-        }))
-        configfile.flush()
+        })
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
-    def test_port(self, config_and_cursor, missing_or_empty_cursor):
+    def test_port(self, build_config_and_cursor, missing_or_empty_cursor):
         (flexmock(journal.Reader, add_match=None, add_disjunction=None)
          .should_receive('get_next')
          .and_return({}))
@@ -720,8 +701,7 @@ class TestCLIEmailSMTP(object):
          .should_receive('send_message')
          .once())
 
-        (configfile, cursorfile) = config_and_cursor
-        configfile.write(yaml.dump({
+        (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
                 'smtp': {
@@ -731,12 +711,11 @@ class TestCLIEmailSMTP(object):
                     'to': 'T',
                 },
             },
-        }))
-        configfile.flush()
+        })
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
-    def test_starttls(self, config_and_cursor, missing_or_empty_cursor):
+    def test_starttls(self, build_config_and_cursor, missing_or_empty_cursor):
         (flexmock(journal.Reader, add_match=None, add_disjunction=None)
          .should_receive('get_next')
          .and_return({}))
@@ -752,8 +731,7 @@ class TestCLIEmailSMTP(object):
          .once()
          .ordered())
 
-        (configfile, cursorfile) = config_and_cursor
-        configfile.write(yaml.dump({
+        (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
                 'smtp': {
@@ -762,12 +740,11 @@ class TestCLIEmailSMTP(object):
                     'to': 'T',
                 },
             },
-        }))
-        configfile.flush()
+        })
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
-    def test_user(self, config_and_cursor, missing_or_empty_cursor):
+    def test_user(self, build_config_and_cursor, missing_or_empty_cursor):
         (flexmock(journal.Reader, add_match=None, add_disjunction=None)
          .should_receive('get_next')
          .and_return({}))
@@ -783,8 +760,7 @@ class TestCLIEmailSMTP(object):
          .once()
          .ordered())
 
-        (configfile, cursorfile) = config_and_cursor
-        configfile.write(yaml.dump({
+        (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
                 'smtp': {
@@ -793,12 +769,11 @@ class TestCLIEmailSMTP(object):
                     'to': 'T',
                 },
             },
-        }))
-        configfile.flush()
+        })
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
-    def test_password(self, config_and_cursor, missing_or_empty_cursor):
+    def test_password(self, build_config_and_cursor, missing_or_empty_cursor):
         (flexmock(journal.Reader, add_match=None, add_disjunction=None)
          .should_receive('get_next')
          .and_return({}))
@@ -814,8 +789,7 @@ class TestCLIEmailSMTP(object):
          .once()
          .ordered())
 
-        (configfile, cursorfile) = config_and_cursor
-        configfile.write(yaml.dump({
+        (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
                 'smtp': {
@@ -825,12 +799,11 @@ class TestCLIEmailSMTP(object):
                     'to': 'T',
                 },
             },
-        }))
-        configfile.flush()
+        })
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
-    def test_subject(self, config_and_cursor, missing_or_empty_cursor):
+    def test_subject(self, build_config_and_cursor, missing_or_empty_cursor):
         (flexmock(journal.Reader, add_match=None, add_disjunction=None)
          .should_receive('get_next')
          .and_return({}))
@@ -855,8 +828,7 @@ class TestCLIEmailSMTP(object):
          .should_receive('send_message')
          .once())
 
-        (configfile, cursorfile) = config_and_cursor
-        configfile.write(yaml.dump({
+        (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
                 'smtp': {
@@ -865,7 +837,6 @@ class TestCLIEmailSMTP(object):
                     'subject': self.TEST_SUBJECT,
                 },
             },
-        }))
-        configfile.flush()
+        })
         cli = CLI(args=['--conf', configfile.name])
         cli.run()

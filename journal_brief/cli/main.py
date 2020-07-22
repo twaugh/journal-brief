@@ -24,7 +24,7 @@ from locale import setlocale, LC_ALL
 import logging
 import os
 import signal
-import smtplib
+from smtplib import SMTP
 import ssl
 import subprocess
 import sys
@@ -240,7 +240,7 @@ class CLI(object):
                 print(EMAIL_DRY_RUN_SEPARATOR)
                 print(message)
             else:
-                with smtplib.SMTP(smtp.get('host'), smtp.get('port', 0)) as sender:
+                with SMTP(smtp.get('host'), smtp.get('port', 0)) as sender:
                     if smtp.get('starttls', False):
                         sender.starttls(context=ssl.create_default_context())
                     if 'user' in smtp:

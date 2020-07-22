@@ -12,7 +12,7 @@ Source0:	https://pypi.python.org/packages/source/j/%{srcname}/%{srcname}-%{versi
 
 BuildArch:	noarch
 BuildRequires:	python3-devel
-BuildRequires:	python3-pytest python3-flexmock
+BuildRequires:	python3-pytest python3-flexmock python3-pytest-mock
 BuildRequires:	python3-PyYAML
 
 %description

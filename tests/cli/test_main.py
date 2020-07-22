@@ -17,7 +17,6 @@ Copyright (c) 2015, 2020 Tim Waugh <tim@cyberelk.net>
 """
 
 from datetime import datetime
-import email.mime.text
 from flexmock import flexmock
 from journal_brief.cli.constants import (EMAIL_SUPPRESS_EMPTY_TEXT,
                                          EMAIL_DRY_RUN_SEPARATOR)
@@ -26,9 +25,6 @@ import json
 import logging
 import os
 import pytest
-import smtplib
-import ssl
-import subprocess
 from systemd import journal
 from tempfile import NamedTemporaryFile
 from tests.test_filter import MySpecialFormatter  # registers class; # noqa: F401
@@ -44,7 +40,7 @@ logging.basicConfig(level=logging.DEBUG)
 def build_config_and_cursor(tmp_path):
     with NamedTemporaryFile(mode='wt', dir=tmp_path) as configfile:
         with NamedTemporaryFile(mode='w+t', dir=tmp_path) as cursorfile:
-            def write_config(config = None):
+            def write_config(config=None):
                 configfile.write('cursor-file: {0}\n'.format(cursorfile.name))
                 if isinstance(config, dict):
                     configfile.write(yaml.dump(config))
@@ -412,26 +408,40 @@ output:
         assert out
 
 
-class TestCLIEmailCommand(object):
+class TestCLIEmailBase(object):
+    @pytest.fixture(autouse=True)
+    def mock_journal(self, mocker):
+        # mock SelectiveReader to ensure that systemd.journal.Reader is never used
+        self.reader_class = mocker.patch('journal_brief.cli.main.SelectiveReader', autospec=True)
+
+        self.entries_class = mocker.patch('journal_brief.cli.main.LatestJournalEntries', autospec=True)
+        self.entries_object = self.entries_class.return_value.__enter__.return_value
+        # don't provide any journal entries unless test function calls mock_entries()
+        self.entries_object.__iter__.return_value = []
+
+        def mock_entries(entries):
+            self.entries_object.__iter__.return_value = entries
+
+        yield mock_entries
+
+
+class TestCLIEmailCommand(TestCLIEmailBase):
     TEST_COMMAND = 'foo'
 
-    def test(self, build_config_and_cursor, missing_or_empty_cursor):
-        entry = {
-            '__CURSOR': '1',
-            'TEST': 'yes',
-            'OUTPUT': 'message',
-        }
+    @pytest.fixture(autouse=True)
+    def mock_subprocess(self, mocker):
+        self.subprocess_module = mocker.patch('journal_brief.cli.main.subprocess', autospec=True)
 
-        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
-         .should_receive('get_next')
-         .and_return(entry)
-         .and_return({}))
+    def test(self, build_config_and_cursor, mock_journal):
+        entries = [
+            {
+                '__CURSOR': '1',
+                'TEST': 'yes',
+                'OUTPUT': 'message',
+            }
+        ]
 
-        (flexmock(subprocess)
-         .should_receive('run')
-         .with_args(self.TEST_COMMAND, shell=True, check=True, text=True,
-                    input=entry['OUTPUT'])
-         .once())
+        mock_journal(entries)
 
         (configfile, cursorfile) = build_config_and_cursor({
             'output': 'test',
@@ -442,21 +452,18 @@ class TestCLIEmailCommand(object):
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
-    def test_dry_run(self, capsys, build_config_and_cursor):
-        entry = {
-            '__CURSOR': '1',
-            'TEST': 'yes',
-            'OUTPUT': 'message',
-        }
+        self.subprocess_module.run.assert_called_once_with(self.TEST_COMMAND, shell=True, check=True, text=True, input=entries[0]['OUTPUT'])
 
-        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
-         .should_receive('get_next')
-         .and_return(entry)
-         .and_return({}))
+    def test_dry_run(self, capsys, build_config_and_cursor, mock_journal):
+        entries = [
+            {
+                '__CURSOR': '1',
+                'TEST': 'yes',
+                'OUTPUT': 'message',
+            }
+        ]
 
-        (flexmock(subprocess)
-         .should_receive('run')
-         .never())
+        mock_journal(entries)
 
         (configfile, cursorfile) = build_config_and_cursor({
             'output': 'test',
@@ -474,17 +481,9 @@ class TestCLIEmailCommand(object):
         assert lines[0] == "Email to be delivered via '{0}'".format(self.TEST_COMMAND)
         assert lines[1] == EMAIL_DRY_RUN_SEPARATOR
 
-    def test_allow_empty(self, build_config_and_cursor, missing_or_empty_cursor):
-        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
-         .should_receive('get_next')
-         .and_return({}))
+        self.subprocess_module.run.assert_not_called()
 
-        (flexmock(subprocess)
-         .should_receive('run')
-         .with_args(self.TEST_COMMAND, shell=True, check=True, text=True,
-                    input=EMAIL_SUPPRESS_EMPTY_TEXT)
-         .once())
-
+    def test_allow_empty(self, build_config_and_cursor):
         (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
@@ -494,15 +493,9 @@ class TestCLIEmailCommand(object):
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
-    def test_suppress_empty(self, build_config_and_cursor, missing_or_empty_cursor):
-        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
-         .should_receive('get_next')
-         .and_return({}))
+        self.subprocess_module.run.assert_called_once_with(self.TEST_COMMAND, shell=True, check=True, text=True, input=EMAIL_SUPPRESS_EMPTY_TEXT)
 
-        (flexmock(subprocess)
-         .should_receive('run')
-         .never())
-
+    def test_suppress_empty(self, build_config_and_cursor):
         (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'command': self.TEST_COMMAND,
@@ -511,8 +504,10 @@ class TestCLIEmailCommand(object):
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
+        self.subprocess_module.run.assert_not_called()
 
-class TestCLIEmailSMTP(object):
+
+class TestCLIEmailSMTP(TestCLIEmailBase):
     TEST_USER = 'zork'
     TEST_PASSWORD = 'xyzzy'
     TEST_HOST = 'example'
@@ -520,45 +515,24 @@ class TestCLIEmailSMTP(object):
     TEST_SUBJECT = 'subj'
 
     @pytest.fixture(autouse=True)
-    def smtp_mock_fixer(self):
-        # ensure that no attempt is made to make a connection
-        (flexmock(smtplib.SMTP)
-         .should_receive('connect')
-         .with_args(str, int))
-        # in Python versions before 3.8, the `close` method will fail if
-        # no connection was opened; because the object has been mocked,
-        # that will always be the case
-        (flexmock(smtplib.SMTP)
-         .should_receive('close')
-         .and_return(None))
+    def mock_smtp(self, mocker):
+        self.mimetext_class = mocker.patch('journal_brief.cli.main.MIMEText', autospec=True)
+        self.mimetext_object = self.mimetext_class.return_value
 
-    def test(self, capsys, build_config_and_cursor, missing_or_empty_cursor):
-        entry = {
-            '__CURSOR': '1',
-            'TEST': 'yes',
-            'OUTPUT': 'message',
-        }
+        self.smtp_class = mocker.patch('journal_brief.cli.main.SMTP', autospec=True)
+        self.smtp_object = self.smtp_class.return_value
+        self.smtp_context = self.smtp_object.__enter__.return_value
 
-        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
-         .should_receive('get_next')
-         .and_return(entry)
-         .and_return({}))
+    def test(self, capsys, mocker, build_config_and_cursor, mock_journal):
+        entries = [
+            {
+                '__CURSOR': '1',
+                'TEST': 'yes',
+                'OUTPUT': 'message',
+            }
+        ]
 
-        (flexmock(email.mime.text.MIMEText)
-         .should_receive('__init__')
-         .with_args(entry['OUTPUT'], _charset='utf-8'))
-
-        (flexmock(email.mime.text.MIMEText)
-         .should_receive('__setitem__')
-         .with_args('From', 'F'))
-
-        (flexmock(email.mime.text.MIMEText)
-         .should_receive('__setitem__')
-         .with_args('To', 'T'))
-
-        (flexmock(smtplib.SMTP)
-         .should_receive('send_message')
-         .once())
+        mock_journal(entries)
 
         (configfile, cursorfile) = build_config_and_cursor({
             'output': 'test',
@@ -572,21 +546,23 @@ class TestCLIEmailSMTP(object):
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
-    def test_dry_run(self, capsys, build_config_and_cursor):
-        entry = {
-            '__CURSOR': '1',
-            'TEST': 'yes',
-            'OUTPUT': 'message',
-        }
+        self.mimetext_class.assert_called_once_with(entries[0]['OUTPUT'], _charset=mocker.ANY)
 
-        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
-         .should_receive('get_next')
-         .and_return(entry)
-         .and_return({}))
+        self.mimetext_object.__setitem__.assert_any_call('From', 'F')
+        self.mimetext_object.__setitem__.assert_any_call('To', 'T')
 
-        (flexmock(smtplib)
-         .should_receive('SMTP')
-         .never())
+        self.smtp_context.send_message.assert_called_once()
+
+    def test_dry_run(self, capsys, build_config_and_cursor, mock_journal):
+        entries = [
+            {
+                '__CURSOR': '1',
+                'TEST': 'yes',
+                'OUTPUT': 'message',
+            }
+        ]
+
+        mock_journal(entries)
 
         (configfile, cursorfile) = build_config_and_cursor({
             'output': 'test',
@@ -600,34 +576,16 @@ class TestCLIEmailSMTP(object):
         cli = CLI(args=['--dry-run', '--conf', configfile.name])
         cli.run()
 
+        self.smtp_class.assert_not_called()
+
         (out, err) = capsys.readouterr()
         assert not err
         lines = out.splitlines()
-        assert len(lines) == 9
+        assert len(lines) == 3
         assert lines[0] == 'Email to be delivered via SMTP to localhost port 25'
         assert lines[1] == EMAIL_DRY_RUN_SEPARATOR
 
-    def test_allow_empty(self, build_config_and_cursor, missing_or_empty_cursor):
-        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
-         .should_receive('get_next')
-         .and_return({}))
-
-        (flexmock(email.mime.text.MIMEText)
-         .should_receive('__init__')
-         .with_args(EMAIL_SUPPRESS_EMPTY_TEXT, _charset='utf-8'))
-
-        (flexmock(email.mime.text.MIMEText)
-         .should_receive('__setitem__')
-         .with_args('From', 'F'))
-
-        (flexmock(email.mime.text.MIMEText)
-         .should_receive('__setitem__')
-         .with_args('To', 'T'))
-
-        (flexmock(smtplib.SMTP)
-         .should_receive('send_message')
-         .once())
-
+    def test_allow_empty(self, mocker, build_config_and_cursor):
         (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
@@ -640,15 +598,9 @@ class TestCLIEmailSMTP(object):
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
-    def test_suppress_empty(self, build_config_and_cursor, missing_or_empty_cursor):
-        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
-         .should_receive('get_next')
-         .and_return({}))
+        self.mimetext_class.assert_called_once_with(EMAIL_SUPPRESS_EMPTY_TEXT, _charset=mocker.ANY)
 
-        (flexmock(smtplib)
-         .should_receive('SMTP')
-         .never())
-
+    def test_suppress_empty(self, build_config_and_cursor):
         (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'smtp': {
@@ -660,20 +612,9 @@ class TestCLIEmailSMTP(object):
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
-    def test_host(self, build_config_and_cursor, missing_or_empty_cursor):
-        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
-         .should_receive('get_next')
-         .and_return({}))
+        self.smtp_class.assert_not_called()
 
-        (flexmock(smtplib.SMTP)
-         .should_receive('__init__')
-         .with_args(self.TEST_HOST, 0)
-         .once())
-
-        (flexmock(smtplib.SMTP)
-         .should_receive('send_message')
-         .once())
-
+    def test_host(self, build_config_and_cursor):
         (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
@@ -687,20 +628,9 @@ class TestCLIEmailSMTP(object):
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
-    def test_port(self, build_config_and_cursor, missing_or_empty_cursor):
-        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
-         .should_receive('get_next')
-         .and_return({}))
+        self.smtp_class.assert_called_once_with(self.TEST_HOST, 0)
 
-        (flexmock(smtplib.SMTP)
-         .should_receive('__init__')
-         .with_args(self.TEST_HOST, self.TEST_PORT)
-         .once())
-
-        (flexmock(smtplib.SMTP)
-         .should_receive('send_message')
-         .once())
-
+    def test_port(self, build_config_and_cursor):
         (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
@@ -715,22 +645,9 @@ class TestCLIEmailSMTP(object):
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
-    def test_starttls(self, build_config_and_cursor, missing_or_empty_cursor):
-        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
-         .should_receive('get_next')
-         .and_return({}))
+        self.smtp_class.assert_called_once_with(self.TEST_HOST, self.TEST_PORT)
 
-        (flexmock(smtplib.SMTP)
-         .should_receive('starttls')
-         .with_args(context=ssl.SSLContext)
-         .once()
-         .ordered())
-
-        (flexmock(smtplib.SMTP)
-         .should_receive('send_message')
-         .once()
-         .ordered())
-
+    def test_starttls(self, build_config_and_cursor):
         (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
@@ -744,22 +661,10 @@ class TestCLIEmailSMTP(object):
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
-    def test_user(self, build_config_and_cursor, missing_or_empty_cursor):
-        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
-         .should_receive('get_next')
-         .and_return({}))
+        assert 'starttls' == self.smtp_context.method_calls[0][0]
+        assert 'send_message' == self.smtp_context.method_calls[1][0]
 
-        (flexmock(smtplib.SMTP)
-         .should_receive('login')
-         .with_args(self.TEST_USER, None)
-         .once()
-         .ordered())
-
-        (flexmock(smtplib.SMTP)
-         .should_receive('send_message')
-         .once()
-         .ordered())
-
+    def test_user(self, mocker, build_config_and_cursor):
         (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
@@ -773,22 +678,10 @@ class TestCLIEmailSMTP(object):
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
-    def test_password(self, build_config_and_cursor, missing_or_empty_cursor):
-        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
-         .should_receive('get_next')
-         .and_return({}))
+        assert mocker.call.login(self.TEST_USER, None) == self.smtp_context.method_calls[0]
+        assert 'send_message' == self.smtp_context.method_calls[1][0]
 
-        (flexmock(smtplib.SMTP)
-         .should_receive('login')
-         .with_args(self.TEST_USER, self.TEST_PASSWORD)
-         .once()
-         .ordered())
-
-        (flexmock(smtplib.SMTP)
-         .should_receive('send_message')
-         .once()
-         .ordered())
-
+    def test_password(self, mocker, build_config_and_cursor):
         (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
@@ -803,31 +696,10 @@ class TestCLIEmailSMTP(object):
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
 
-    def test_subject(self, build_config_and_cursor, missing_or_empty_cursor):
-        (flexmock(journal.Reader, add_match=None, add_disjunction=None)
-         .should_receive('get_next')
-         .and_return({}))
+        assert mocker.call.login(self.TEST_USER, self.TEST_PASSWORD) == self.smtp_context.method_calls[0]
+        assert 'send_message' == self.smtp_context.method_calls[1][0]
 
-        (flexmock(email.mime.text.MIMEText)
-         .should_receive('__init__')
-         .with_args(EMAIL_SUPPRESS_EMPTY_TEXT, _charset='utf-8'))
-
-        (flexmock(email.mime.text.MIMEText)
-         .should_receive('__setitem__')
-         .with_args('Subject', self.TEST_SUBJECT))
-
-        (flexmock(email.mime.text.MIMEText)
-         .should_receive('__setitem__')
-         .with_args('From', 'F'))
-
-        (flexmock(email.mime.text.MIMEText)
-         .should_receive('__setitem__')
-         .with_args('To', 'T'))
-
-        (flexmock(smtplib.SMTP)
-         .should_receive('send_message')
-         .once())
-
+    def test_subject(self, build_config_and_cursor):
         (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
@@ -840,3 +712,5 @@ class TestCLIEmailSMTP(object):
         })
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
+
+        self.mimetext_object.__setitem__.assert_any_call('Subject', self.TEST_SUBJECT)

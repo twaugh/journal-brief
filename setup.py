@@ -72,7 +72,7 @@ setup(
         'console_scripts': ['journal-brief=journal_brief.cli.main:run'],
     },
     install_requires=['PyYAML', 'systemd-python'],
-    tests_require=['pytest', 'flexmock'],
+    tests_require=['pytest', 'flexmock', 'pytest-mock'],
     cmdclass={'test': PyTest},
     packages=find_packages(exclude=['tests',
                                     'tests.cli',

@@ -4,7 +4,7 @@ python:
   - "3.8"
 install:
   - pip install PyYAML
-  - pip install flexmock
+  - pip install flexmock pytest-mock
   - pip install pytest-cov coveralls
   - pip install -r tests/requirements.txt
 script: py.test -vv -rs tests --cov journal_brief --benchmark-skip

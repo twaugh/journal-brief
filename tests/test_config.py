@@ -199,6 +199,86 @@ exclusions:
             'to': 'bar',
             'password': [],
         }},
+        {'smtp': {
+            'from': 'foo',
+            'to': {},
+        }},
+        {'smtp': {
+            'from': 'foo',
+            'to': 'bar',
+            'cc': {},
+        }},
+        {'smtp': {
+            'from': 'foo',
+            'to': 'bar',
+            'bcc': {},
+        }},
+        {'smtp': {
+            'from': 'foo',
+            'to': 'bar',
+            'headers': [],
+        }},
+        {'smtp': {
+            'from': 'foo',
+            'to': 'bar',
+            'headers': 'baz',
+        }},
+        {'smtp': {
+            'from': 'foo',
+            'to': 'bar',
+            'headers': {
+                'From': 'foo',
+            },
+        }},
+        {'smtp': {
+            'from': 'foo',
+            'to': 'bar',
+            'headers': {
+                'To': 'foo',
+            },
+        }},
+        {'smtp': {
+            'from': 'foo',
+            'to': 'bar',
+            'headers': {
+                'Cc': 'foo',
+            },
+        }},
+        {'smtp': {
+            'from': 'foo',
+            'to': 'bar',
+            'headers': {
+                'Bcc': 'foo',
+            },
+        }},
+        {'smtp': {
+            'from': 'foo',
+            'to': 'bar',
+            'headers': {
+                'from': 'foo',
+            },
+        }},
+        {'smtp': {
+            'from': 'foo',
+            'to': 'bar',
+            'headers': {
+                'TO': 'foo',
+            },
+        }},
+        {'smtp': {
+            'from': 'foo',
+            'to': 'bar',
+            'headers': {
+                'cC': 'foo',
+            },
+        }},
+        {'smtp': {
+            'from': 'foo',
+            'to': 'bar',
+            'headers': {
+                'BcC': 'foo',
+            },
+        }},
     ])
     def test_validation_email(self, badconfig):
         with NamedTemporaryFile(mode='wt') as cfp:

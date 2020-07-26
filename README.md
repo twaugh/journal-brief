@@ -191,7 +191,14 @@ the formatted output to `admin@example.com`.
 
 * `from`: RFC-5322 format address to be used as the sender address (required)
 
-* `to`: RFC-5322 format address to be used as the recipient address (required)
+* `to`: RFC-5322 format address to be used as the recipient address, or a list
+of such addresses (required)
+
+* `cc`: RFC-5322 format address to be used as a carbon-copy address,
+or a list of such addresses
+
+* `bcc`: RFC-5322 format address to be used as a blind-carbon-copy address,
+or a list of such addresses
 
 * `subject`: string to be used as the email message subject
 
@@ -207,3 +214,6 @@ secure the connection to the SMTP server
 
 * `password`: password to be used to authenticate to the SMTP server (only
 used if `user` is specified)
+
+* 'headers': dictionary of string keys and string values to be added as
+custom headers; the dictionary cannot include 'From', 'To', 'Cc', or 'Bcc'

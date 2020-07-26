@@ -33,7 +33,8 @@ from journal_brief import (SelectiveReader,
                            LatestJournalEntries,
                            get_formatter,
                            list_formatters,
-                           JournalFilter)
+                           JournalFilter,
+                           __version__ as journal_brief_version)
 from journal_brief.cli.constants import (EMAIL_SUPPRESS_EMPTY_TEXT,
                                          EMAIL_DRY_RUN_SEPARATOR)
 from journal_brief.config import Config, ConfigError
@@ -228,10 +229,18 @@ class CLI(object):
             smtp = email['smtp']
             charset.add_charset('utf-8', charset.QP, charset.QP)
             message = MIMEText(output, _charset='utf-8')
+            message['X-Journal-Brief-Version'] = journal_brief_version
             message['From'] = smtp['from']
-            message['To'] = smtp['to']
+            message['To'] = ', '.join(smtp['to'])
             if 'subject' in smtp:
                 message['Subject'] = smtp['subject']
+            if 'cc' in smtp:
+                message['Cc'] = ', '.join(smtp['cc'])
+            if 'bcc' in smtp:
+                message['Bcc'] = ', '.join(smtp['bcc'])
+            if 'headers' in smtp:
+                for header, value in smtp['headers'].items():
+                    message[header] = value
 
             if self.args.dry_run:
                 print("Email to be delivered via SMTP to {0} port {1}".format(

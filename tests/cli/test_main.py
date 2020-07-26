@@ -714,3 +714,70 @@ class TestCLIEmailSMTP(TestCLIEmailBase):
         cli.run()
 
         self.mimetext_object.__setitem__.assert_any_call('Subject', self.TEST_SUBJECT)
+
+    def test_to_list(self, build_config_and_cursor):
+        (configfile, cursorfile) = build_config_and_cursor({
+            'email': {
+                'suppress_empty': False,
+                'smtp': {
+                    'from': 'F',
+                    'to': ['A', 'B'],
+                },
+            },
+        })
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+        self.mimetext_object.__setitem__.assert_any_call('To', 'A, B')
+
+    def test_cc_list(self, build_config_and_cursor):
+        (configfile, cursorfile) = build_config_and_cursor({
+            'email': {
+                'suppress_empty': False,
+                'smtp': {
+                    'from': 'F',
+                    'to': 'T',
+                    'cc': ['A', 'B'],
+                },
+            },
+        })
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+        self.mimetext_object.__setitem__.assert_any_call('Cc', 'A, B')
+
+    def test_bcc_list(self, build_config_and_cursor):
+        (configfile, cursorfile) = build_config_and_cursor({
+            'email': {
+                'suppress_empty': False,
+                'smtp': {
+                    'from': 'F',
+                    'to': 'T',
+                    'bcc': ['A', 'B'],
+                },
+            },
+        })
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+        self.mimetext_object.__setitem__.assert_any_call('Bcc', 'A, B')
+
+    def test_headers(self, build_config_and_cursor):
+        (configfile, cursorfile) = build_config_and_cursor({
+            'email': {
+                'suppress_empty': False,
+                'smtp': {
+                    'from': 'F',
+                    'to': 'T',
+                    'headers': {
+                        'X-Header-1': '1',
+                        'X-Header-4': '4',
+                    },
+                },
+            },
+        })
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+        self.mimetext_object.__setitem__.assert_any_call('X-Header-1', '1')
+        self.mimetext_object.__setitem__.assert_any_call('X-Header-4', '4')

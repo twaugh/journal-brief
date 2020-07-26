@@ -190,7 +190,10 @@ class Config(dict):
         }
 
         ALLOWED_SMTP_KEYWORDS = {
+            'bcc',
+            'cc',
             'from',
+            'headers',
             'host',
             'password',
             'port',
@@ -198,6 +201,13 @@ class Config(dict):
             'subject',
             'to',
             'user',
+        }
+
+        DISALLOWED_HEADERS = {
+            'From'.casefold(),
+            'To'.casefold(),
+            'Cc'.casefold(),
+            'Bcc'.casefold(),
         }
 
         if 'email' not in self:
@@ -257,9 +267,31 @@ class Config(dict):
                 yield SemanticError('\'smtp\' map must include \'to\'', 'smtp',
                                     {'smtp': smtp})
             else:
-                if not isinstance(smtp['to'], str):
-                    yield SemanticError('expected string', 'to',
+                if isinstance(smtp['to'], list):
+                    pass
+                elif isinstance(smtp['to'], str):
+                    smtp['to'] = [smtp['to']]
+                else:
+                    yield SemanticError('expected list or string', 'to',
                                         {'smtp': {'to': smtp['to']}})
+
+            if 'cc' in smtp:
+                if isinstance(smtp['cc'], list):
+                    pass
+                elif isinstance(smtp['cc'], str):
+                    smtp['cc'] = [smtp['cc']]
+                else:
+                    yield SemanticError('expected list or string', 'cc',
+                                        {'smtp': {'cc': smtp['cc']}})
+
+            if 'bcc' in smtp:
+                if isinstance(smtp['bcc'], list):
+                    pass
+                elif isinstance(smtp['bcc'], str):
+                    smtp['bcc'] = [smtp['bcc']]
+                else:
+                    yield SemanticError('expected list or string', 'bcc',
+                                        {'smtp': {'bcc': smtp['bcc']}})
 
             if ('subject' in smtp and
                     not isinstance(smtp['subject'], str)):
@@ -291,6 +323,16 @@ class Config(dict):
                     not isinstance(smtp['password'], str)):
                 yield SemanticError('expected string', 'password',
                                     {'smtp': {'password': smtp['password']}})
+
+            if 'headers' in smtp:
+                    if not isinstance(smtp['headers'], dict):
+                        yield SemanticError('expected dict', 'headers',
+                                            {'smtp': {'headers': smtp['headers']}})
+                    else:
+                        for key in smtp['headers'].keys():
+                            if key.casefold() in DISALLOWED_HEADERS:
+                                yield SemanticError("Header " + key + " cannot not be specified here", 'headers',
+                                                    {'smtp': {'headers': smtp['headers']}})
 
     def validate_output(self):
         if 'output' not in self:

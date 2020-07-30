@@ -425,6 +425,139 @@ class TestCLIEmailBase(object):
         yield mock_entries
 
 
+class TestCLIEmailMIME(TestCLIEmailBase):
+    TEST_COMMAND = 'foo'
+    TEST_SUBJECT = 'subj'
+
+    @pytest.fixture(autouse=True)
+    def mock_mime(self, mocker):
+        self.mimetext_class = mocker.patch('journal_brief.cli.main.MIMEText', autospec=True)
+        self.mimetext_object = self.mimetext_class.return_value
+
+    @pytest.fixture(autouse=True)
+    def mock_subprocess(self, mocker):
+        self.subprocess_module = mocker.patch('journal_brief.cli.main.subprocess', autospec=True)
+
+    def test(self, capsys, mocker, build_config_and_cursor, mock_journal):
+        entries = [
+            {
+                '__CURSOR': '1',
+                'TEST': 'yes',
+                'OUTPUT': 'message',
+            }
+        ]
+
+        mock_journal(entries)
+
+        (configfile, cursorfile) = build_config_and_cursor({
+            'output': 'test',
+            'email': {
+                'command': self.TEST_COMMAND,
+                'from': 'F',
+                'to': 'T',
+            },
+        })
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+        self.mimetext_class.assert_called_once_with(entries[0]['OUTPUT'], _charset=mocker.ANY)
+
+        self.mimetext_object.__setitem__.assert_any_call('From', 'F')
+        self.mimetext_object.__setitem__.assert_any_call('To', 'T')
+
+    def test_allow_empty(self, mocker, build_config_and_cursor):
+        (configfile, cursorfile) = build_config_and_cursor({
+            'email': {
+                'suppress_empty': False,
+                'command': self.TEST_COMMAND,
+                'from': 'F',
+                'to': 'T',
+            },
+        })
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+        self.mimetext_class.assert_called_once_with(EMAIL_SUPPRESS_EMPTY_TEXT, _charset=mocker.ANY)
+
+    def test_subject(self, build_config_and_cursor):
+        (configfile, cursorfile) = build_config_and_cursor({
+            'email': {
+                'suppress_empty': False,
+                'command': self.TEST_COMMAND,
+                'from': 'F',
+                'to': 'T',
+                'subject': self.TEST_SUBJECT,
+            },
+        })
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+        self.mimetext_object.__setitem__.assert_any_call('Subject', self.TEST_SUBJECT)
+
+    def test_to_list(self, build_config_and_cursor):
+        (configfile, cursorfile) = build_config_and_cursor({
+            'email': {
+                'suppress_empty': False,
+                'command': self.TEST_COMMAND,
+                'from': 'F',
+                'to': ['A', 'B'],
+            },
+        })
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+        self.mimetext_object.__setitem__.assert_any_call('To', 'A, B')
+
+    def test_cc_list(self, build_config_and_cursor):
+        (configfile, cursorfile) = build_config_and_cursor({
+            'email': {
+                'suppress_empty': False,
+                'command': self.TEST_COMMAND,
+                'from': 'F',
+                'to': 'T',
+                'cc': ['A', 'B'],
+            },
+        })
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+        self.mimetext_object.__setitem__.assert_any_call('Cc', 'A, B')
+
+    def test_bcc_list(self, build_config_and_cursor):
+        (configfile, cursorfile) = build_config_and_cursor({
+            'email': {
+                'suppress_empty': False,
+                'command': self.TEST_COMMAND,
+                'from': 'F',
+                'to': 'T',
+                'bcc': ['A', 'B'],
+            },
+        })
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+        self.mimetext_object.__setitem__.assert_any_call('Bcc', 'A, B')
+
+    def test_headers(self, build_config_and_cursor):
+        (configfile, cursorfile) = build_config_and_cursor({
+            'email': {
+                'suppress_empty': False,
+                'command': self.TEST_COMMAND,
+                'from': 'F',
+                'to': 'T',
+                'headers': {
+                    'X-Header-1': '1',
+                    'X-Header-4': '4',
+                },
+            },
+        })
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+        self.mimetext_object.__setitem__.assert_any_call('X-Header-1', '1')
+        self.mimetext_object.__setitem__.assert_any_call('X-Header-4', '4')
+
+
 class TestCLIEmailCommand(TestCLIEmailBase):
     TEST_COMMAND = 'foo'
 
@@ -432,7 +565,31 @@ class TestCLIEmailCommand(TestCLIEmailBase):
     def mock_subprocess(self, mocker):
         self.subprocess_module = mocker.patch('journal_brief.cli.main.subprocess', autospec=True)
 
-    def test(self, build_config_and_cursor, mock_journal):
+    def test(self, build_config_and_cursor, mock_journal, mocker):
+        entries = [
+            {
+                '__CURSOR': '1',
+                'TEST': 'yes',
+                'OUTPUT': 'message',
+            }
+        ]
+
+        mock_journal(entries)
+
+        (configfile, cursorfile) = build_config_and_cursor({
+            'output': 'test',
+            'email': {
+                'command': self.TEST_COMMAND,
+                'from': 'F',
+                'to': 'T',
+            }
+        })
+        cli = CLI(args=['--conf', configfile.name])
+        cli.run()
+
+        self.subprocess_module.run.assert_called_once_with(self.TEST_COMMAND, shell=True, check=True, text=True, input=mocker.ANY)
+
+    def test_non_mime(self, build_config_and_cursor, mock_journal, mocker):
         entries = [
             {
                 '__CURSOR': '1',
@@ -469,6 +626,8 @@ class TestCLIEmailCommand(TestCLIEmailBase):
             'output': 'test',
             'email': {
                 'command': self.TEST_COMMAND,
+                'from': 'F',
+                'to': 'T',
             },
         })
         cli = CLI(args=['--dry-run', '--conf', configfile.name])
@@ -477,28 +636,18 @@ class TestCLIEmailCommand(TestCLIEmailBase):
         (out, err) = capsys.readouterr()
         assert not err
         lines = out.splitlines()
-        assert len(lines) == 3
+        assert len(lines) == 10
         assert lines[0] == "Email to be delivered via '{0}'".format(self.TEST_COMMAND)
         assert lines[1] == EMAIL_DRY_RUN_SEPARATOR
 
         self.subprocess_module.run.assert_not_called()
 
-    def test_allow_empty(self, build_config_and_cursor):
-        (configfile, cursorfile) = build_config_and_cursor({
-            'email': {
-                'suppress_empty': False,
-                'command': self.TEST_COMMAND,
-            },
-        })
-        cli = CLI(args=['--conf', configfile.name])
-        cli.run()
-
-        self.subprocess_module.run.assert_called_once_with(self.TEST_COMMAND, shell=True, check=True, text=True, input=EMAIL_SUPPRESS_EMPTY_TEXT)
-
     def test_suppress_empty(self, build_config_and_cursor):
         (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'command': self.TEST_COMMAND,
+                'from': 'F',
+                'to': 'T',
             },
         })
         cli = CLI(args=['--conf', configfile.name])
@@ -516,9 +665,6 @@ class TestCLIEmailSMTP(TestCLIEmailBase):
 
     @pytest.fixture(autouse=True)
     def mock_smtp(self, mocker):
-        self.mimetext_class = mocker.patch('journal_brief.cli.main.MIMEText', autospec=True)
-        self.mimetext_object = self.mimetext_class.return_value
-
         self.smtp_class = mocker.patch('journal_brief.cli.main.SMTP', autospec=True)
         self.smtp_object = self.smtp_class.return_value
         self.smtp_context = self.smtp_object.__enter__.return_value
@@ -537,19 +683,13 @@ class TestCLIEmailSMTP(TestCLIEmailBase):
         (configfile, cursorfile) = build_config_and_cursor({
             'output': 'test',
             'email': {
-                'smtp': {
-                    'from': 'F',
-                    'to': 'T',
-                },
+                'from': 'F',
+                'to': 'T',
+                'smtp': {},
             },
         })
         cli = CLI(args=['--conf', configfile.name])
         cli.run()
-
-        self.mimetext_class.assert_called_once_with(entries[0]['OUTPUT'], _charset=mocker.ANY)
-
-        self.mimetext_object.__setitem__.assert_any_call('From', 'F')
-        self.mimetext_object.__setitem__.assert_any_call('To', 'T')
 
         self.smtp_context.send_message.assert_called_once()
 
@@ -567,10 +707,9 @@ class TestCLIEmailSMTP(TestCLIEmailBase):
         (configfile, cursorfile) = build_config_and_cursor({
             'output': 'test',
             'email': {
-                'smtp': {
-                    'from': 'F',
-                    'to': 'T',
-                },
+                'from': 'F',
+                'to': 'T',
+                'smtp': {},
             },
         })
         cli = CLI(args=['--dry-run', '--conf', configfile.name])
@@ -581,32 +720,16 @@ class TestCLIEmailSMTP(TestCLIEmailBase):
         (out, err) = capsys.readouterr()
         assert not err
         lines = out.splitlines()
-        assert len(lines) == 3
+        assert len(lines) == 10
         assert lines[0] == 'Email to be delivered via SMTP to localhost port 25'
         assert lines[1] == EMAIL_DRY_RUN_SEPARATOR
-
-    def test_allow_empty(self, mocker, build_config_and_cursor):
-        (configfile, cursorfile) = build_config_and_cursor({
-            'email': {
-                'suppress_empty': False,
-                'smtp': {
-                    'from': 'F',
-                    'to': 'T',
-                },
-            },
-        })
-        cli = CLI(args=['--conf', configfile.name])
-        cli.run()
-
-        self.mimetext_class.assert_called_once_with(EMAIL_SUPPRESS_EMPTY_TEXT, _charset=mocker.ANY)
 
     def test_suppress_empty(self, build_config_and_cursor):
         (configfile, cursorfile) = build_config_and_cursor({
             'email': {
-                'smtp': {
-                    'from': 'F',
-                    'to': 'T',
-                },
+                'from': 'F',
+                'to': 'T',
+                'smtp': {},
             },
         })
         cli = CLI(args=['--conf', configfile.name])
@@ -618,10 +741,10 @@ class TestCLIEmailSMTP(TestCLIEmailBase):
         (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
+                'from': 'F',
+                'to': 'T',
                 'smtp': {
                     'host': self.TEST_HOST,
-                    'from': 'F',
-                    'to': 'T',
                 },
             },
         })
@@ -634,11 +757,11 @@ class TestCLIEmailSMTP(TestCLIEmailBase):
         (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
+                'from': 'F',
+                'to': 'T',
                 'smtp': {
                     'host': self.TEST_HOST,
                     'port': self.TEST_PORT,
-                    'from': 'F',
-                    'to': 'T',
                 },
             },
         })
@@ -651,10 +774,10 @@ class TestCLIEmailSMTP(TestCLIEmailBase):
         (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
+                'from': 'F',
+                'to': 'T',
                 'smtp': {
                     'starttls': True,
-                    'from': 'F',
-                    'to': 'T',
                 },
             },
         })
@@ -668,10 +791,10 @@ class TestCLIEmailSMTP(TestCLIEmailBase):
         (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
+                'from': 'F',
+                'to': 'T',
                 'smtp': {
                     'user': self.TEST_USER,
-                    'from': 'F',
-                    'to': 'T',
                 },
             },
         })
@@ -685,11 +808,11 @@ class TestCLIEmailSMTP(TestCLIEmailBase):
         (configfile, cursorfile) = build_config_and_cursor({
             'email': {
                 'suppress_empty': False,
+                'from': 'F',
+                'to': 'T',
                 'smtp': {
                     'user': self.TEST_USER,
                     'password': self.TEST_PASSWORD,
-                    'from': 'F',
-                    'to': 'T',
                 },
             },
         })
@@ -698,86 +821,3 @@ class TestCLIEmailSMTP(TestCLIEmailBase):
 
         assert mocker.call.login(self.TEST_USER, self.TEST_PASSWORD) == self.smtp_context.method_calls[0]
         assert 'send_message' == self.smtp_context.method_calls[1][0]
-
-    def test_subject(self, build_config_and_cursor):
-        (configfile, cursorfile) = build_config_and_cursor({
-            'email': {
-                'suppress_empty': False,
-                'smtp': {
-                    'from': 'F',
-                    'to': 'T',
-                    'subject': self.TEST_SUBJECT,
-                },
-            },
-        })
-        cli = CLI(args=['--conf', configfile.name])
-        cli.run()
-
-        self.mimetext_object.__setitem__.assert_any_call('Subject', self.TEST_SUBJECT)
-
-    def test_to_list(self, build_config_and_cursor):
-        (configfile, cursorfile) = build_config_and_cursor({
-            'email': {
-                'suppress_empty': False,
-                'smtp': {
-                    'from': 'F',
-                    'to': ['A', 'B'],
-                },
-            },
-        })
-        cli = CLI(args=['--conf', configfile.name])
-        cli.run()
-
-        self.mimetext_object.__setitem__.assert_any_call('To', 'A, B')
-
-    def test_cc_list(self, build_config_and_cursor):
-        (configfile, cursorfile) = build_config_and_cursor({
-            'email': {
-                'suppress_empty': False,
-                'smtp': {
-                    'from': 'F',
-                    'to': 'T',
-                    'cc': ['A', 'B'],
-                },
-            },
-        })
-        cli = CLI(args=['--conf', configfile.name])
-        cli.run()
-
-        self.mimetext_object.__setitem__.assert_any_call('Cc', 'A, B')
-
-    def test_bcc_list(self, build_config_and_cursor):
-        (configfile, cursorfile) = build_config_and_cursor({
-            'email': {
-                'suppress_empty': False,
-                'smtp': {
-                    'from': 'F',
-                    'to': 'T',
-                    'bcc': ['A', 'B'],
-                },
-            },
-        })
-        cli = CLI(args=['--conf', configfile.name])
-        cli.run()
-
-        self.mimetext_object.__setitem__.assert_any_call('Bcc', 'A, B')
-
-    def test_headers(self, build_config_and_cursor):
-        (configfile, cursorfile) = build_config_and_cursor({
-            'email': {
-                'suppress_empty': False,
-                'smtp': {
-                    'from': 'F',
-                    'to': 'T',
-                    'headers': {
-                        'X-Header-1': '1',
-                        'X-Header-4': '4',
-                    },
-                },
-            },
-        })
-        cli = CLI(args=['--conf', configfile.name])
-        cli.run()
-
-        self.mimetext_object.__setitem__.assert_any_call('X-Header-1', '1')
-        self.mimetext_object.__setitem__.assert_any_call('X-Header-4', '4')

@@ -184,22 +184,22 @@ class Config(dict):
 
     def validate_email(self):
         ALLOWED_EMAIL_KEYWORDS = {
+            'bcc',
+            'cc',
             'command',
+            'from',
+            'headers',
             'smtp',
+            'subject',
             'suppress_empty',
+            'to',
         }
 
         ALLOWED_SMTP_KEYWORDS = {
-            'bcc',
-            'cc',
-            'from',
-            'headers',
             'host',
             'password',
             'port',
             'starttls',
-            'subject',
-            'to',
             'user',
         }
 
@@ -214,6 +214,7 @@ class Config(dict):
             return
 
         email = self.get('email')
+        self['mime-email'] = True
 
         if not isinstance(email, dict):
             yield SemanticError('must be a map', 'email',
@@ -233,18 +234,31 @@ class Config(dict):
             email['suppress_empty'] = True
 
         if ('smtp' in email and 'command' in email):
-            yield SemanticError('cannot specify both smtp and command', 'command',
+            yield SemanticError('cannot specify both smtp and command', 'email',
                                 {'email':
                                  {'command': email['command'],
                                   'smtp': email['smtp']}})
 
-        if ('command' in email and
-                not isinstance(email['command'], str)):
-            yield SemanticError('expected string', 'command',
-                                {'email': {'command': email['command']}})
+        if not ('smtp' in email or 'command' in email):
+            yield SemanticError('either smtp or command must be specified', 'email',
+                                {'email': email})
+
+        if 'command' in email:
+            if not isinstance(email['command'], str):
+                yield SemanticError('expected string', 'command',
+                                    {'email': {'command': email['command']}})
+
+            # allow old-style non-MIME configuration for command delivery
+            if not ('from' in email or 'to' in email):
+                self['mime-email'] = False
 
         if 'smtp' in email:
             smtp = email['smtp']
+
+            # convert old-style configuration to new-style
+            for key in ['from', 'to', 'cc', 'bcc', 'subject', 'headers']:
+                if key in smtp:
+                    email[key] = smtp.pop(key)
 
             if not isinstance(smtp, dict):
                 yield SemanticError('must be a map', 'smtp',
@@ -254,49 +268,6 @@ class Config(dict):
             for unexpected_key in set(smtp) - ALLOWED_SMTP_KEYWORDS:
                 yield SemanticError('unexpected \'smtp\' keyword', unexpected_key,
                                     {unexpected_key: smtp[unexpected_key]})
-
-            if 'from' not in smtp:
-                yield SemanticError('\'smtp\' map must include \'from\'', 'smtp',
-                                    {'smtp': smtp})
-            else:
-                if not isinstance(smtp['from'], str):
-                    yield SemanticError('expected string', 'from',
-                                        {'smtp': {'from': smtp['from']}})
-
-            if 'to' not in smtp:
-                yield SemanticError('\'smtp\' map must include \'to\'', 'smtp',
-                                    {'smtp': smtp})
-            else:
-                if isinstance(smtp['to'], list):
-                    pass
-                elif isinstance(smtp['to'], str):
-                    smtp['to'] = [smtp['to']]
-                else:
-                    yield SemanticError('expected list or string', 'to',
-                                        {'smtp': {'to': smtp['to']}})
-
-            if 'cc' in smtp:
-                if isinstance(smtp['cc'], list):
-                    pass
-                elif isinstance(smtp['cc'], str):
-                    smtp['cc'] = [smtp['cc']]
-                else:
-                    yield SemanticError('expected list or string', 'cc',
-                                        {'smtp': {'cc': smtp['cc']}})
-
-            if 'bcc' in smtp:
-                if isinstance(smtp['bcc'], list):
-                    pass
-                elif isinstance(smtp['bcc'], str):
-                    smtp['bcc'] = [smtp['bcc']]
-                else:
-                    yield SemanticError('expected list or string', 'bcc',
-                                        {'smtp': {'bcc': smtp['bcc']}})
-
-            if ('subject' in smtp and
-                    not isinstance(smtp['subject'], str)):
-                yield SemanticError('expected string', 'subject',
-                                    {'smtp': {'subject': smtp['subject']}})
 
             if ('host' in smtp and
                     not isinstance(smtp['host'], str)):
@@ -324,15 +295,61 @@ class Config(dict):
                 yield SemanticError('expected string', 'password',
                                     {'smtp': {'password': smtp['password']}})
 
-            if 'headers' in smtp:
-                    if not isinstance(smtp['headers'], dict):
-                        yield SemanticError('expected dict', 'headers',
-                                            {'smtp': {'headers': smtp['headers']}})
-                    else:
-                        for key in smtp['headers'].keys():
-                            if key.casefold() in DISALLOWED_HEADERS:
-                                yield SemanticError("Header " + key + " cannot not be specified here", 'headers',
-                                                    {'smtp': {'headers': smtp['headers']}})
+        if not self['mime-email']:
+            return
+
+        if 'from' not in email:
+            yield SemanticError('\'email\' map must include \'from\'', 'email',
+                                {'email': email})
+        else:
+            if not isinstance(email['from'], str):
+                yield SemanticError('expected string', 'from',
+                                    {'email': {'from': email['from']}})
+
+        if 'to' not in email:
+            yield SemanticError('\'email\' map must include \'to\'', 'email',
+                                {'email': email})
+        else:
+            if isinstance(email['to'], list):
+                pass
+            elif isinstance(email['to'], str):
+                email['to'] = [email['to']]
+            else:
+                yield SemanticError('expected list or string', 'to',
+                                    {'email': {'to': email['to']}})
+
+        if 'cc' in email:
+            if isinstance(email['cc'], list):
+                pass
+            elif isinstance(email['cc'], str):
+                email['cc'] = [email['cc']]
+            else:
+                yield SemanticError('expected list or string', 'cc',
+                                    {'email': {'cc': email['cc']}})
+
+        if 'bcc' in email:
+            if isinstance(email['bcc'], list):
+                pass
+            elif isinstance(email['bcc'], str):
+                email['bcc'] = [email['bcc']]
+            else:
+                yield SemanticError('expected list or string', 'bcc',
+                                    {'email': {'bcc': email['bcc']}})
+
+        if ('subject' in email and
+                not isinstance(email['subject'], str)):
+            yield SemanticError('expected string', 'subject',
+                                {'email': {'subject': email['subject']}})
+
+        if 'headers' in email:
+            if not isinstance(email['headers'], dict):
+                yield SemanticError('expected dict', 'headers',
+                                    {'email': {'headers': email['headers']}})
+            else:
+                for key in email['headers'].keys():
+                    if key.casefold() in DISALLOWED_HEADERS:
+                        yield SemanticError("Header " + key + " cannot not be specified here", 'headers',
+                                            {'email': {'headers': email['headers']}})
 
     def validate_output(self):
         if 'output' not in self:

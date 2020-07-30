@@ -161,124 +161,184 @@ exclusions:
             assert len(c['output']) == num_outputs
 
     @pytest.mark.parametrize('badconfig', [
-        {'disallowed': '1'},
-        {'suppress_empty': 'foo'},
-        {'command': []},
-        {'smtp': []},
-        {'command': 'foo', 'smtp': 'bar'},
-        {'smtp': {'disallowed': '1'}},
-        {'smtp': {'from': 'foo'}},
-        {'smtp': {'to': 'bar'}},
-        {'smtp': {
+        {
             'from': 'foo',
             'to': 'bar',
+        },
+        {
+            'from': 'foo',
+            'to': 'bar',
+            'command': 'baz',
+            'disallowed': '1',
+        },
+        {
+            'from': 'foo',
+            'to': 'bar',
+            'command': 'baz',
+            'suppress_empty': 'foo',
+        },
+        {
+            'from': 'foo',
+            'to': 'bar',
+            'command': [],
+        },
+        {
+            'from': 'foo',
+            'to': 'bar',
+            'smtp': [],
+        },
+        {
+            'from': 'foo',
+            'to': 'bar',
+            'command': 'foo',
+            'smtp': 'bar',
+        },
+        {
+            'from': 'foo',
+            'to': 'bar',
+            'smtp': {'disallowed': '1'},
+        },
+        {
+            'from': 'foo',
+            'command': 'baz',
+        },
+        {
+            'to': 'bar',
+            'command': 'baz',
+        },
+        {
+            'from': 'foo',
+            'to': 'bar',
+            'command': 'baz',
             'subject': [],
-        }},
-        {'smtp': {
+        },
+        {
             'from': 'foo',
             'to': 'bar',
-            'host': [],
-        }},
-        {'smtp': {
+            'smtp': {
+                'host': [],
+            },
+        },
+        {
             'from': 'foo',
             'to': 'bar',
-            'port': [],
-        }},
-        {'smtp': {
+            'smtp': {
+                'port': [],
+            },
+        },
+        {
             'from': 'foo',
             'to': 'bar',
-            'starttls': 'baz',
-        }},
-        {'smtp': {
+            'smtp': {
+                'starttls': 'baz',
+            },
+        },
+        {
             'from': 'foo',
             'to': 'bar',
-            'user': [],
-        }},
-        {'smtp': {
+            'smtp': {
+                'user': [],
+            },
+        },
+        {
             'from': 'foo',
             'to': 'bar',
-            'password': [],
-        }},
-        {'smtp': {
+            'smtp': {
+                'password': [],
+            },
+        },
+        {
             'from': 'foo',
             'to': {},
-        }},
-        {'smtp': {
+        },
+        {
             'from': 'foo',
             'to': 'bar',
+            'command': 'baz',
             'cc': {},
-        }},
-        {'smtp': {
+        },
+        {
             'from': 'foo',
             'to': 'bar',
+            'command': 'baz',
             'bcc': {},
-        }},
-        {'smtp': {
+        },
+        {
             'from': 'foo',
             'to': 'bar',
+            'command': 'baz',
             'headers': [],
-        }},
-        {'smtp': {
+        },
+        {
             'from': 'foo',
             'to': 'bar',
+            'command': 'baz',
             'headers': 'baz',
-        }},
-        {'smtp': {
+        },
+        {
             'from': 'foo',
             'to': 'bar',
+            'command': 'baz',
             'headers': {
                 'From': 'foo',
             },
-        }},
-        {'smtp': {
+        },
+        {
             'from': 'foo',
             'to': 'bar',
+            'command': 'baz',
             'headers': {
                 'To': 'foo',
             },
-        }},
-        {'smtp': {
+        },
+        {
             'from': 'foo',
             'to': 'bar',
+            'command': 'baz',
             'headers': {
                 'Cc': 'foo',
             },
-        }},
-        {'smtp': {
+        },
+        {
             'from': 'foo',
             'to': 'bar',
+            'command': 'baz',
             'headers': {
                 'Bcc': 'foo',
             },
-        }},
-        {'smtp': {
+        },
+        {
             'from': 'foo',
             'to': 'bar',
+            'command': 'baz',
             'headers': {
                 'from': 'foo',
             },
-        }},
-        {'smtp': {
+        },
+        {
             'from': 'foo',
             'to': 'bar',
+            'command': 'baz',
             'headers': {
                 'TO': 'foo',
             },
-        }},
-        {'smtp': {
+        },
+        {
             'from': 'foo',
             'to': 'bar',
+            'command': 'baz',
             'headers': {
                 'cC': 'foo',
             },
-        }},
-        {'smtp': {
+        },
+        {
             'from': 'foo',
             'to': 'bar',
+            'command': 'baz',
             'headers': {
                 'BcC': 'foo',
             },
-        }},
+        },
     ])
     def test_validation_email(self, badconfig):
         with NamedTemporaryFile(mode='wt') as cfp:
@@ -291,3 +351,26 @@ exclusions:
                     # Test the exception can be represented as a string
                     str(ex)
                     raise
+
+    @pytest.mark.parametrize('oldconfig', [
+        {
+            'command': 'foo',
+        },
+        {
+            'smtp': {
+                'from': 'foo',
+                'to': 'bar',
+                'cc': 'baz',
+                'bcc': 'bat',
+                'subject': 'subj',
+                'headers': {
+                    'blah': 'bluh',
+                },
+            },
+        },
+    ])
+    def test_oldconfig_email(self, oldconfig):
+        with NamedTemporaryFile(mode='wt') as cfp:
+            cfp.write(yaml.dump({'email': oldconfig}))
+            cfp.flush()
+            Config(config_file=cfp.name)

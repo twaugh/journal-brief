@@ -160,35 +160,6 @@ via SMTP.
 * `suppress_empty`: if true, no email will be sent unless matching journal
 entries are found (defaults to `true`)
 
-### Email via command
-
-Example:
-```yaml
-email:
-  command: "mail -s 'journal output' admin@example.com"
-```
-
-This will cause journal-brief to execute the specified command in a
-child process and pipe the formatted journal entries to it. The supplied
-command string will be executed via the shell (typically identified in the
-`SHELL` environment variable) so it can make use of shell expansions and
-other features.
-
-### Email via SMTP
-
-Example:
-```yaml
-email:
-  smtp:
-    from: "journal sender" <journal@example.com>
-    to: "system admin" <admin@example.com>
-```
-
-This will cause journal-brief to use the Python `smtplib` module to send
-the formatted output to `admin@example.com`.
-
-#### Email SMTP configuration keys
-
 * `from`: RFC-5322 format address to be used as the sender address (required)
 
 * `to`: RFC-5322 format address to be used as the recipient address, or a list
@@ -202,18 +173,55 @@ or a list of such addresses
 
 * `subject`: string to be used as the email message subject
 
+* `headers`: dictionary of string keys and string values to be added as
+custom headers; the dictionary cannot include 'From', 'To', 'Cc', or 'Bcc'
+
+Either command-based or SMTP-based delivery must be specified (but not both).
+
+### Email via command
+
+Example:
+```yaml
+email:
+  from: "journal sender" <journal@example.com>
+  to: "system admin" <admin@example.com>
+  command: "sendmail -i -t"
+```
+
+This will cause journal-brief to execute the specified command in a
+child process and pipe the formatted email message to it. The supplied
+command string will be executed via the shell (typically identified in the
+`SHELL` environment variable) so it can make use of shell expansions and
+other features.
+
+### Email via SMTP
+
+Example:
+```yaml
+email:
+  from: "journal sender" <journal@example.com>
+  to: "system admin" <admin@example.com>
+  smtp: {}
+```
+
+This will cause journal-brief to use the Python `smtplib` module to send
+the formatted email message.
+
+Note the usage of YAML 'flow' style to specify an empty mapping for the
+'smtp' configuration, allowing all of the defaults to be used. This is only
+necessary when no SMTP-specific configuration keys are specified.
+
+#### Email SMTP configuration keys
+
 * `host`: hostname or address of the SMTP server to use for sending email
 (defaults to `localhost`)
 
 * `port`: port number to connect to on the SMTP server (defaults to `25`)
 
 * `starttls`: boolean value indicating whether STARTTLS should be used to
-secure the connection to the SMTP server
+secure the connection to the SMTP server (defaults to `false`)
 
 * `user`: username to be used to authenticate to the SMTP server
 
 * `password`: password to be used to authenticate to the SMTP server (only
 used if `user` is specified)
-
-* 'headers': dictionary of string keys and string values to be added as
-custom headers; the dictionary cannot include 'From', 'To', 'Cc', or 'Bcc'

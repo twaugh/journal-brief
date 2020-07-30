@@ -218,30 +218,40 @@ class CLI(object):
             else:
                 return
 
-        if 'command' in email:  # delivery through command
+        if not self.config.get('mime-email'):
+            # old-style non-MIME delivery through command
             if self.args.dry_run:
                 print("Email to be delivered via '{0}'".format(email['command']))
                 print(EMAIL_DRY_RUN_SEPARATOR)
                 print(output)
             else:
                 subprocess.run(email['command'], shell=True, check=True, text=True, input=output)
+            return
+
+        charset.add_charset('utf-8', charset.QP, charset.QP)
+        message = MIMEText(output, _charset='utf-8')
+        message['X-Journal-Brief-Version'] = journal_brief_version
+        message['From'] = email['from']
+        message['To'] = ', '.join(email['to'])
+        if 'subject' in email:
+            message['Subject'] = email['subject']
+        if 'cc' in email:
+            message['Cc'] = ', '.join(email['cc'])
+        if 'bcc' in email:
+            message['Bcc'] = ', '.join(email['bcc'])
+        if 'headers' in email:
+            for header, value in email['headers'].items():
+                message[header] = value
+
+        if 'command' in email:  # delivery through command
+            if self.args.dry_run:
+                print("Email to be delivered via '{0}'".format(email['command']))
+                print(EMAIL_DRY_RUN_SEPARATOR)
+                print(message)
+            else:
+                subprocess.run(email['command'], shell=True, check=True, text=True, input=message)
         else:  # delivery via SMTP
             smtp = email['smtp']
-            charset.add_charset('utf-8', charset.QP, charset.QP)
-            message = MIMEText(output, _charset='utf-8')
-            message['X-Journal-Brief-Version'] = journal_brief_version
-            message['From'] = smtp['from']
-            message['To'] = ', '.join(smtp['to'])
-            if 'subject' in smtp:
-                message['Subject'] = smtp['subject']
-            if 'cc' in smtp:
-                message['Cc'] = ', '.join(smtp['cc'])
-            if 'bcc' in smtp:
-                message['Bcc'] = ', '.join(smtp['bcc'])
-            if 'headers' in smtp:
-                for header, value in smtp['headers'].items():
-                    message[header] = value
-
             if self.args.dry_run:
                 print("Email to be delivered via SMTP to {0} port {1}".format(
                     smtp.get('host', 'localhost'),

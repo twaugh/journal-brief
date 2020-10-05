@@ -14,6 +14,7 @@ BuildArch:	noarch
 BuildRequires:	python3-devel
 BuildRequires:	python3-pytest python3-flexmock python3-pytest-mock
 BuildRequires:	python3-PyYAML
+BuildRequires:	python3-setuptools
 
 %description
 Python module for examining, bookmarking, and filtering systemd

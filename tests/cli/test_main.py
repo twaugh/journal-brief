@@ -588,6 +588,7 @@ class TestCLIEmailCommand(TestCLIEmailBase):
         cli.run()
 
         self.subprocess_module.run.assert_called_once_with(self.TEST_COMMAND, shell=True, check=True, text=True, input=mocker.ANY)
+        assert isinstance(self.subprocess_module.run.call_args[1]['input'], str), "subprocess.run 'input' argument must be a string"
 
     def test_non_mime(self, build_config_and_cursor, mock_journal, mocker):
         entries = [

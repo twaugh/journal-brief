@@ -247,9 +247,9 @@ class CLI(object):
             if self.args.dry_run:
                 print("Email to be delivered via '{0}'".format(email['command']))
                 print(EMAIL_DRY_RUN_SEPARATOR)
-                print(message)
+                print(str(message))
             else:
-                subprocess.run(email['command'], shell=True, check=True, text=True, input=message)
+                subprocess.run(email['command'], shell=True, check=True, text=True, input=str(message))
         else:  # delivery via SMTP
             smtp = email['smtp']
             if self.args.dry_run:

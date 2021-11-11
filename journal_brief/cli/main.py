@@ -321,8 +321,7 @@ def run():
     except KeyboardInterrupt:
         pass
     except IOError as ex:
-        sys.stderr.write("{0}: {1}\n".format(PACKAGE,
-                                             os.strerror(ex.errno)))
+        sys.stderr.write("{0}: {1}\n".format(PACKAGE, ex))
         sys.exit(1)
     except ConfigError:
         sys.exit(1)

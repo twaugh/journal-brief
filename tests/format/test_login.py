@@ -18,7 +18,7 @@ Copyright (c) 2015 Tim Waugh <tim@cyberelk.net>
 
 from journal_brief.format import get_formatter
 import journal_brief.format.login  # registers class; # noqa: F401
-from locale import setlocale, LC_ALL
+import locale
 from uuid import UUID
 
 
@@ -28,7 +28,14 @@ class TestLoginEntryFormatter(object):
         assert formatter.flush() == ''
 
     def test_login(self):
-        setlocale(LC_ALL, 'en_US.UTF-8')  # check locale-aware sorting
+        # check locale-aware sorting
+        for lc in ('en_US.UTF.8', 'en_US'):
+            try:
+                locale.setlocale(locale.LC_ALL, lc)
+                break
+            except locale.Error:
+                pass
+
         formatter = get_formatter('login')
         base = formatter.FILTER_INCLUSIONS[0].copy()
         base['MESSAGE_ID'] = [UUID(uuid) for uuid in base['MESSAGE_ID']]

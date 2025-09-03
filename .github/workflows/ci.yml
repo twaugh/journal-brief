@@ -8,6 +8,7 @@ on:
 
 jobs:
   test:
+    name: test-python-${{ matrix.python-version }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -42,3 +43,18 @@ jobs:
       with:
         file: ./coverage.xml
         fail_ci_if_error: false
+
+  # Summary job that depends on all test jobs
+  test-summary:
+    name: All tests passed
+    runs-on: ubuntu-latest
+    needs: test
+    if: always()
+    steps:
+      - name: Check test results
+        run: |
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "One or more tests failed"
+            exit 1
+          fi
+          echo "All tests passed!"

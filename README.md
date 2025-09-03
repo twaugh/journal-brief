@@ -1,6 +1,6 @@
-[![Code Health](https://landscape.io/github/twaugh/journal-brief/master/landscape.svg?style=flat)](https://landscape.io/github/twaugh/journal-brief/master)
-[![Build Status](https://travis-ci.org/twaugh/journal-brief.svg?branch=master)](https://travis-ci.org/twaugh/journal-brief) 
-[![Coverage Status](https://coveralls.io/repos/twaugh/journal-brief/badge.svg?branch=master&service=github)](https://coveralls.io/github/twaugh/journal-brief?branch=master)
+[![CI](https://github.com/twaugh/journal-brief/workflows/CI/badge.svg)](https://github.com/twaugh/journal-brief/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/twaugh/journal-brief/branch/master/graph/badge.svg)](https://codecov.io/gh/twaugh/journal-brief)
+[![PyPI version](https://badge.fury.io/py/journal-brief.svg)](https://badge.fury.io/py/journal-brief)
 
 # journal-brief
 Show interesting new systemd journal entries since last run.

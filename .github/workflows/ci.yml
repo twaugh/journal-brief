@@ -36,7 +36,16 @@ jobs:
 
     - name: Run tests with coverage
       run: |
-        pytest -vv -rs tests --cov journal_brief --junitxml=junit.xml -o junit_family=legacy
+        pytest -vv -rs tests --cov journal_brief --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
+
+    - name: Upload coverage to Codecov
+      if: ${{ !cancelled() }}
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage.xml
+        flags: python-${{ matrix.python-version }}
+        fail_ci_if_error: false
 
     - name: Upload test results to Codecov
       if: ${{ !cancelled() }}

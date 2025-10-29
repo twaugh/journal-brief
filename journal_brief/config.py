@@ -404,8 +404,7 @@ class Config(dict):
                 valid = values in PRIORITY_MAP
         except TypeError:
             valid = False
-        finally:
-            return valid
+        return valid
 
     def find_bad_rule_values(self, key, index, field, values):
         for value in values:
